@@ -1,39 +1,53 @@
-// IMPORT MODULES
-
 import "./monitoring.js";
 import "./products.js";
 import "./fefo.js";
 import "./logs.js";
 
-// SECTION NAVIGATION
+const sections = [
+  "monitoring",
+  "products",
+  "fefo",
+  "logs"
+];
 
 window.showSection = function(sectionName) {
-
-  // SEMUA SECTION
-
-  const sections = [
-
-    "monitoring",
-    "products",
-    "fefo",
-    "logs"
-
-  ];
-
-  // HIDE SEMUA
-
   sections.forEach((section) => {
+    const sectionElement =
+      document.getElementById(`${section}-section`);
 
-    document
-      .getElementById(`${section}-section`)
-      .classList.add("hidden");
+    const navButton =
+      document.querySelector(`[data-section="${section}"]`);
 
+    if (sectionElement) {
+      sectionElement.classList.toggle(
+        "hidden",
+        section !== sectionName
+      );
+    }
+
+    if (navButton) {
+      navButton.classList.toggle(
+        "active",
+        section === sectionName
+      );
+    }
+  });
+};
+
+document
+  .getElementById("view-graphs")
+  ?.addEventListener("click", () => {
+    window.showSection("logs");
   });
 
-  // TAMPILKAN SECTION DIPILIH
+document
+  .getElementById("download-logs")
+  ?.addEventListener("click", () => {
+    window.downloadMonitoringLogs?.();
+  });
 
-  document
-    .getElementById(`${sectionName}-section`)
-    .classList.remove("hidden");
-
-};
+document
+  .getElementById("export-products")
+  ?.addEventListener("click", () => {
+    window.exportProductsData?.();
+  });

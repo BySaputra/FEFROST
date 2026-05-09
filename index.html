@@ -3,11 +3,10 @@
 
 <head>
   <meta charset="UTF-8">
-
   <meta name="viewport"
     content="width=device-width, initial-scale=1.0">
 
-  <title>FEFROST Dashboard</title>
+  <title>FEFROST IoT Dashboard</title>
 
   <link rel="stylesheet"
     href="css/style.css">
@@ -15,177 +14,334 @@
   <script type="module"
     src="js/app.js">
   </script>
-
 </head>
 
 <body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">F</div>
 
-  <div class="container">
+        <div>
+          <strong>FEFROST</strong>
+          <span>Smart Cold Storage</span>
+        </div>
+      </div>
 
-    <!-- SIDEBAR -->
-    <aside class="sidebar">
+      <nav class="topnav"
+        aria-label="Primary navigation">
+        <button class="nav-link active"
+          data-section="monitoring"
+          onclick="showSection('monitoring')">
+          Dashboard
+        </button>
 
-      <h2>FEFROST</h2>
+        <button class="nav-link"
+          data-section="products"
+          onclick="showSection('products')">
+          Inventory
+        </button>
 
-      <button onclick="showSection('monitoring')">
-        Monitoring
-      </button>
+        <button class="nav-link"
+          data-section="fefo"
+          onclick="showSection('fefo')">
+          FEFO
+        </button>
 
-      <button onclick="showSection('products')">
-        Products
-      </button>
+        <button class="nav-link"
+          data-section="logs"
+          onclick="showSection('logs')">
+          Logs
+        </button>
+      </nav>
+    </header>
 
-      <button onclick="showSection('fefo')">
-        FEFO
-      </button>
-
-      <button onclick="showSection('logs')">
-        Logs
-      </button>
-
-    </aside>
-
-    <!-- MAIN CONTENT -->
     <main class="main-content">
-
-      <!-- MONITORING -->
       <section id="monitoring-section"
         class="content-section">
-
-        <h1>Realtime Monitoring</h1>
-
-        <div id="alert-box"
-          class="alert alert-safe"
-          role="status"
-          aria-live="polite">
-
-          <div class="alert-content">
-            <span id="alert-status"
-              class="alert-status">
-              SAFE
-            </span>
-
-            <span id="alert-message">
-              System is operating normally. Storage temperature is within safe range.
-            </span>
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">Realtime Operations</p>
+            <h1>Cold Storage Dashboard</h1>
           </div>
 
-          <span id="alert-time"
-            class="alert-time">
-            --
-          </span>
+          <div class="live-indicator">
+            <span></span>
+            Firebase Realtime
+          </div>
         </div>
 
-        <div class="card">
-          <h3>Room Temperature</h3>
-          <p id="temp-room">-- &deg;C</p>
+        <div class="overview-grid">
+          <article class="metric-card metric-primary">
+            <span class="metric-label">Storage Temperature</span>
+            <strong id="temp-storage">-- &deg;C</strong>
+            <small>Primary cold room sensor</small>
+          </article>
+
+          <article class="metric-card">
+            <span class="metric-label">Room Temperature</span>
+            <strong id="temp-room">-- &deg;C</strong>
+            <small>Ambient monitoring area</small>
+          </article>
+
+          <article class="metric-card">
+            <span class="metric-label">Humidity</span>
+            <strong id="humidity">-- %</strong>
+            <small>Relative humidity level</small>
+          </article>
+
+          <article class="metric-card">
+            <span class="metric-label">Inventory Status</span>
+            <strong id="inventory-count">--</strong>
+            <small>Registered cold-chain products</small>
+          </article>
         </div>
 
-        <div class="card">
-          <h3>Humidity</h3>
-          <p id="humidity">-- %</p>
-        </div>
+        <div class="dashboard-grid">
+          <section class="panel alert-panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Alert System</p>
+                <h2>Realtime Warning</h2>
+              </div>
 
-        <div class="card">
-          <h3>Storage Temperature</h3>
-          <p id="temp-storage">-- &deg;C</p>
-        </div>
+              <p id="status"
+                class="status-pill status-safe">
+                --
+              </p>
+            </div>
 
-        <div class="card">
-          <h3>Status</h3>
-          <p id="status">--</p>
-        </div>
+            <div id="alert-box"
+              class="alert alert-safe"
+              role="status"
+              aria-live="polite">
+              <div class="alert-content">
+                <span id="alert-status"
+                  class="alert-status">
+                  SAFE
+                </span>
 
+                <span id="alert-message">
+                  System is operating normally. Storage temperature is within safe range.
+                </span>
+              </div>
+
+              <span id="alert-time"
+                class="alert-time">
+                --
+              </span>
+            </div>
+
+            <div class="threshold-row">
+              <span>SAFE <= 5&deg;C</span>
+              <span>WARNING 5-8&deg;C</span>
+              <span>DANGER > 8&deg;C</span>
+            </div>
+          </section>
+
+          <aside class="panel action-panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Operator Tools</p>
+                <h2>Quick Actions</h2>
+              </div>
+            </div>
+
+            <div class="action-list">
+              <button id="download-logs"
+                class="action-button">
+                <span>Download Logs</span>
+                <small>Export monitoring history</small>
+              </button>
+
+              <button id="view-graphs"
+                class="action-button">
+                <span>View Graphs</span>
+                <small>Open realtime log section</small>
+              </button>
+
+              <button id="export-products"
+                class="action-button">
+                <span>Export Inventory</span>
+                <small>Download product data</small>
+              </button>
+            </div>
+          </aside>
+        </div>
       </section>
 
-      <!-- PRODUCTS -->
       <section id="products-section"
         class="content-section hidden">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">Inventory</p>
+            <h1>Product Management</h1>
+          </div>
 
-        <h1>Product Management</h1>
-
-        <div class="card">
-
-          <input type="text"
-            id="product-name"
-            placeholder="Product Name">
-
-          <input type="text"
-            id="category"
-            placeholder="Category">
-
-          <input type="date"
-            id="entry-date">
-
-          <input type="date"
-            id="expired-date">
-
-          <select id="sensitivity">
-
-            <option value="1">
-              Low
-            </option>
-
-            <option value="2">
-              Medium
-            </option>
-
-            <option value="3">
-              High
-            </option>
-
-          </select>
-
-          <input type="number"
-            id="ideal-temp"
-            placeholder="Ideal Temperature">
-
-          <button id="add-product">
-            Add Product
-          </button>
-
+          <input type="search"
+            id="product-search"
+            class="toolbar-input"
+            placeholder="Search products">
         </div>
 
-        <div class="card">
-          <h2>Product List</h2>
+        <div class="split-grid">
+          <section class="panel form-panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">New Product</p>
+                <h2>Add Inventory</h2>
+              </div>
+            </div>
 
-          <ul id="product-list"></ul>
+            <div class="form-grid">
+              <label>
+                Product Name
+                <input type="text"
+                  id="product-name"
+                  placeholder="Frozen salmon">
+              </label>
+
+              <label>
+                Category
+                <input type="text"
+                  id="category"
+                  placeholder="Seafood">
+              </label>
+
+              <label>
+                Entry Date
+                <input type="date"
+                  id="entry-date">
+              </label>
+
+              <label>
+                Expired Date
+                <input type="date"
+                  id="expired-date">
+              </label>
+
+              <label>
+                Sensitivity
+                <select id="sensitivity">
+                  <option value="1">Low</option>
+                  <option value="2">Medium</option>
+                  <option value="3">High</option>
+                </select>
+              </label>
+
+              <label>
+                Ideal Temperature
+                <input type="number"
+                  id="ideal-temp"
+                  placeholder="4">
+              </label>
+            </div>
+
+            <button id="add-product"
+              class="primary-button">
+              Add Product
+            </button>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Realtime Database</p>
+                <h2>Product List</h2>
+              </div>
+            </div>
+
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Category</th>
+                    <th>Entry</th>
+                    <th>Expired</th>
+                    <th>Sensitivity</th>
+                    <th>Ideal Temp</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+
+                <tbody id="product-list"></tbody>
+              </table>
+            </div>
+          </section>
         </div>
-
       </section>
 
-      <!-- FEFO -->
       <section id="fefo-section"
         class="content-section hidden">
-
-        <h1>FEFO Priority</h1>
-
-        <div class="card">
-
-          <ul id="fefo-list"></ul>
-
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">Adaptive Engine</p>
+            <h1>FEFO Priority</h1>
+          </div>
         </div>
 
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Risk Ranking</p>
+              <h2>Priority Queue</h2>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="data-table priority-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Product</th>
+                  <th>Risk Score</th>
+                  <th>Priority</th>
+                </tr>
+              </thead>
+
+              <tbody id="fefo-list"></tbody>
+            </table>
+          </div>
+        </section>
       </section>
 
-      <!-- LOGS -->
       <section id="logs-section"
         class="content-section hidden">
-
-        <h1>Monitoring Logs</h1>
-
-        <div class="card">
-
-          <ul id="logs-list"></ul>
-
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">Historical Data</p>
+            <h1>Monitoring Logs</h1>
+          </div>
         </div>
 
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Latest First</p>
+              <h2>Realtime Log Stream</h2>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Room Temp</th>
+                  <th>Humidity</th>
+                  <th>Storage Temp</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+
+              <tbody id="logs-list"></tbody>
+            </table>
+          </div>
+        </section>
       </section>
-
     </main>
-
   </div>
-
 </body>
 
 </html>

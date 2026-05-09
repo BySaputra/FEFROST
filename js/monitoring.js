@@ -142,7 +142,7 @@ function renderMonitoring(data) {
       status;
 
     elements.status.className =
-      `status-${status.toLowerCase()}`;
+      `status-pill status-${status.toLowerCase()}`;
   }
 
   if (elements.alertBox) {

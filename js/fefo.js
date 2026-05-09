@@ -10,186 +10,176 @@ import {
 }
 from "../config/firebase-config.js";
 
-// ELEMENT
-
 const fefoList =
 document.getElementById("fefo-list");
-
-// DATA STORAGE
 
 let monitoringData = {};
 let productsData = {};
 
-// MONITORING LISTENER
-
 onValue(
   ref(database, "fefrost/monitoring"),
   (snapshot) => {
-
-    monitoringData = snapshot.val();
+    monitoringData =
+      snapshot.val();
 
     calculateFEFO();
-
   }
 );
-
-// PRODUCT LISTENER
 
 onValue(
   ref(database, "fefrost/products"),
   (snapshot) => {
-
-    productsData = snapshot.val();
+    productsData =
+      snapshot.val();
 
     calculateFEFO();
-
   }
 );
 
-// FEFO ENGINE
+function getPriorityClass(status) {
+  if (status === "CRITICAL") return "danger";
+  if (status === "WARNING") return "warning";
+
+  return "safe";
+}
+
+function renderEmptyRow() {
+  if (!fefoList) return;
+
+  fefoList.innerHTML = `
+    <tr>
+      <td class="empty-row" colspan="4">
+        Waiting for monitoring and inventory data.
+      </td>
+    </tr>
+  `;
+}
+
+function renderFEFO(results) {
+  if (!fefoList) return;
+
+  if (results.length === 0) {
+    renderEmptyRow();
+
+    return;
+  }
+
+  fefoList.innerHTML =
+    results.map((item, index) => {
+      const score =
+        Number(item.score);
+
+      const riskWidth =
+        Math.min(score * 8, 100);
+
+      const riskColor =
+        item.status === "CRITICAL"
+          ? "var(--danger)"
+          : item.status === "WARNING"
+            ? "var(--warning)"
+            : "var(--safe)";
+
+      return `
+        <tr>
+          <td>
+            <strong>#${index + 1}</strong>
+          </td>
+          <td>${item.name}</td>
+          <td>
+            ${item.score}
+            <span class="risk-bar"
+              style="--risk-width: ${riskWidth}%; --risk-color: ${riskColor};">
+              <span></span>
+            </span>
+          </td>
+          <td>
+            <span class="badge ${getPriorityClass(item.status)}">
+              ${item.status}
+            </span>
+          </td>
+        </tr>
+      `;
+    }).join("");
+}
 
 function calculateFEFO() {
+  if (!monitoringData || !productsData) {
+    renderEmptyRow();
 
-  if (!monitoringData || !productsData) return;
+    return;
+  }
 
   const results = [];
 
   Object.keys(productsData).forEach((key) => {
-
     const product =
-    productsData[key];
-
-    // STORAGE TEMP
+      productsData[key];
 
     const actualTemp =
-    monitoringData.temperature_storage;
+      Number(monitoringData.temperature_storage);
 
     const idealTemp =
-    product.ideal_temp;
+      Number(product.ideal_temp);
 
-    // DELTA T
+    if (
+      !Number.isFinite(actualTemp) ||
+      !Number.isFinite(idealTemp)
+    ) {
+      return;
+    }
 
     const deltaT =
-    Math.abs(actualTemp - idealTemp);
-
-    // EXPIRED CALCULATION
+      Math.abs(actualTemp - idealTemp);
 
     const today =
-    new Date();
+      new Date();
 
     const expired =
-    new Date(product.expired_date);
+      new Date(product.expired_date);
 
     const remainingDays =
-    Math.max(
-      (expired - today)
-      / (1000 * 60 * 60 * 24),
-      1
-    );
+      Math.max(
+        (expired - today) / (1000 * 60 * 60 * 24),
+        1
+      );
 
     const expiredFactor =
-    1 / remainingDays;
-
-    // RISK SCORE
+      1 / remainingDays;
 
     const riskScore =
-    (deltaT * product.sensitivity)
-    +
-    (expiredFactor * 10);
+      (deltaT * Number(product.sensitivity)) +
+      (expiredFactor * 10);
 
-    // STATUS
-
-    let status = "SAFE";
+    let status =
+      "SAFE";
 
     if (riskScore > 10) {
-
-      status = "CRITICAL";
-
+      status =
+        "CRITICAL";
     }
 
     else if (riskScore > 5) {
-
-      status = "WARNING";
-
+      status =
+        "WARNING";
     }
-
-    // PUSH RESULT
 
     results.push({
-
       name:
-      product.product_name,
-
+        product.product_name,
       score:
-      riskScore.toFixed(2),
-
-      status:
+        riskScore.toFixed(2),
       status
-
     });
-
   });
-
-  // SORT DESCENDING
 
   results.sort(
-    (a, b) => b.score - a.score
+    (a, b) => Number(b.score) - Number(a.score)
   );
 
-  // CLEAR UI
-
-  fefoList.innerHTML = "";
-
-  // DISPLAY RESULT
-
-  results.forEach((item, index) => {
-
-    const li =
-    document.createElement("li");
-
-    let statusClass = "safe";
-
-    if (item.status === "WARNING") {
-
-      statusClass = "warning";
-
-    }
-
-    else if (item.status === "CRITICAL") {
-
-      statusClass = "danger";
-
-    }
-
-    li.innerHTML = `
-
-      <strong>
-        ${index + 1}. ${item.name}
-      </strong>
-
-      <br>
-
-      Risk Score:
-      ${item.score}
-
-      <br>
-
-      Status:
-      <span class="${statusClass}">
-        ${item.status}
-      </span>
-
-    `;
-
-    fefoList.appendChild(li);
-
-  });
-
-  // SAVE TO FIREBASE
+  renderFEFO(results);
 
   set(
     ref(database, "fefrost/fefo_priority"),
     results
   );
-
 }
