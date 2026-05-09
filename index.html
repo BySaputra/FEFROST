@@ -1,37 +1,191 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0">
+
   <title>FEFROST Dashboard</title>
 
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet"
+    href="css/style.css">
 
-  <script type="module" src="app.js"></script>
+  <script type="module"
+    src="js/app.js">
+  </script>
+
 </head>
+
 <body>
 
-  <h1>FEFROST Monitoring</h1>
+  <div class="container">
 
-  <div class="card">
-    <h2>Room Temperature</h2>
-    <p id="temp-room">-- °C</p>
-  </div>
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
 
-  <div class="card">
-    <h2>Humidity</h2>
-    <p id="humidity">-- %</p>
-  </div>
+      <h2>FEFROST</h2>
 
-  <div class="card">
-    <h2>Storage Temperature</h2>
-    <p id="temp-storage">-- °C</p>
-  </div>
+      <button onclick="showSection('monitoring')">
+        Monitoring
+      </button>
 
-  <div class="card">
-    <h2>Status</h2>
-    <p id="status">--</p>
+      <button onclick="showSection('products')">
+        Products
+      </button>
+
+      <button onclick="showSection('fefo')">
+        FEFO
+      </button>
+
+      <button onclick="showSection('logs')">
+        Logs
+      </button>
+
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+
+      <!-- MONITORING -->
+      <section id="monitoring-section"
+        class="content-section">
+
+        <h1>Realtime Monitoring</h1>
+
+        <div id="alert-box"
+          class="alert alert-safe"
+          role="status"
+          aria-live="polite">
+
+          <div class="alert-content">
+            <span id="alert-status"
+              class="alert-status">
+              SAFE
+            </span>
+
+            <span id="alert-message">
+              System is operating normally. Storage temperature is within safe range.
+            </span>
+          </div>
+
+          <span id="alert-time"
+            class="alert-time">
+            --
+          </span>
+        </div>
+
+        <div class="card">
+          <h3>Room Temperature</h3>
+          <p id="temp-room">-- &deg;C</p>
+        </div>
+
+        <div class="card">
+          <h3>Humidity</h3>
+          <p id="humidity">-- %</p>
+        </div>
+
+        <div class="card">
+          <h3>Storage Temperature</h3>
+          <p id="temp-storage">-- &deg;C</p>
+        </div>
+
+        <div class="card">
+          <h3>Status</h3>
+          <p id="status">--</p>
+        </div>
+
+      </section>
+
+      <!-- PRODUCTS -->
+      <section id="products-section"
+        class="content-section hidden">
+
+        <h1>Product Management</h1>
+
+        <div class="card">
+
+          <input type="text"
+            id="product-name"
+            placeholder="Product Name">
+
+          <input type="text"
+            id="category"
+            placeholder="Category">
+
+          <input type="date"
+            id="entry-date">
+
+          <input type="date"
+            id="expired-date">
+
+          <select id="sensitivity">
+
+            <option value="1">
+              Low
+            </option>
+
+            <option value="2">
+              Medium
+            </option>
+
+            <option value="3">
+              High
+            </option>
+
+          </select>
+
+          <input type="number"
+            id="ideal-temp"
+            placeholder="Ideal Temperature">
+
+          <button id="add-product">
+            Add Product
+          </button>
+
+        </div>
+
+        <div class="card">
+          <h2>Product List</h2>
+
+          <ul id="product-list"></ul>
+        </div>
+
+      </section>
+
+      <!-- FEFO -->
+      <section id="fefo-section"
+        class="content-section hidden">
+
+        <h1>FEFO Priority</h1>
+
+        <div class="card">
+
+          <ul id="fefo-list"></ul>
+
+        </div>
+
+      </section>
+
+      <!-- LOGS -->
+      <section id="logs-section"
+        class="content-section hidden">
+
+        <h1>Monitoring Logs</h1>
+
+        <div class="card">
+
+          <ul id="logs-list"></ul>
+
+        </div>
+
+      </section>
+
+    </main>
+
   </div>
 
 </body>
+
 </html>
