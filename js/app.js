@@ -51,3 +51,9 @@ document
   ?.addEventListener("click", () => {
     window.exportProductsData?.();
   });
+
+document
+  .getElementById("refresh-monitoring")
+  ?.addEventListener("click", () => {
+    window.showSection("monitoring");
+  });

@@ -54,6 +54,20 @@
           Logs
         </button>
       </nav>
+
+      <div class="nav-actions"
+        aria-label="Dashboard actions">
+        <button class="icon-button"
+          type="button"
+          aria-label="Open settings">
+          <span aria-hidden="true"></span>
+        </button>
+
+        <button class="logout-button"
+          type="button">
+          Logout
+        </button>
+      </div>
     </header>
 
     <main class="main-content">
@@ -101,7 +115,7 @@
           <section class="panel alert-panel">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">Alert System</p>
+                <p class="eyebrow">Alert Center</p>
                 <h2>Realtime Warning</h2>
               </div>
 
@@ -139,6 +153,48 @@
             </div>
           </section>
 
+          <aside class="panel alert-summary-panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Live Alerts</p>
+                <h2>Alert Summary</h2>
+              </div>
+
+              <strong id="alert-count"
+                class="alert-counter">
+                1
+              </strong>
+            </div>
+
+            <div class="latest-alert-list">
+              <article class="latest-alert-item">
+                <span class="alert-dot safe"></span>
+                <div>
+                  <strong>Current monitoring state</strong>
+                  <small id="latest-alert-copy">
+                    Synced from realtime storage temperature.
+                  </small>
+                </div>
+              </article>
+
+              <article class="latest-alert-item">
+                <span class="alert-dot warning"></span>
+                <div>
+                  <strong>Warning threshold</strong>
+                  <small>Triggered when storage temperature rises above 5&deg;C.</small>
+                </div>
+              </article>
+
+              <article class="latest-alert-item">
+                <span class="alert-dot danger"></span>
+                <div>
+                  <strong>Danger threshold</strong>
+                  <small>Immediate action required above 8&deg;C.</small>
+                </div>
+              </article>
+            </div>
+          </aside>
+
           <aside class="panel action-panel">
             <div class="panel-header">
               <div>
@@ -154,16 +210,22 @@
                 <small>Export monitoring history</small>
               </button>
 
+              <button id="export-products"
+                class="action-button">
+                <span>Export Data</span>
+                <small>Download inventory dataset</small>
+              </button>
+
               <button id="view-graphs"
                 class="action-button">
-                <span>View Graphs</span>
+                <span>View Sensor Graph</span>
                 <small>Open realtime log section</small>
               </button>
 
-              <button id="export-products"
+              <button id="refresh-monitoring"
                 class="action-button">
-                <span>Export Inventory</span>
-                <small>Download product data</small>
+                <span>Refresh Monitoring</span>
+                <small>Return to live dashboard view</small>
               </button>
             </div>
           </aside>
