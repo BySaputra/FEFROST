@@ -730,6 +730,251 @@ select:focus {
   text-align: center;
 }
 
+/* =======================================
+   LOGS TOOLBAR & FILTERS
+   ======================================= */
+
+.logs-toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.toolbar-input,
+.toolbar-select {
+  min-height: 40px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.toolbar-input {
+  flex: 1;
+  min-width: 200px;
+}
+
+.toolbar-select {
+  min-width: 140px;
+}
+
+.toolbar-input::placeholder {
+  color: var(--muted);
+}
+
+.toolbar-input:focus,
+.toolbar-select:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+}
+
+/* =======================================
+   TELEMETRY TABLE
+   ======================================= */
+
+.telemetry-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+}
+
+.telemetry-table th,
+.telemetry-table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.telemetry-table th {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  background: #f8fafc;
+}
+
+.telemetry-table tr:hover td {
+  background: #f0f4f9;
+}
+
+.log-row.telemetry {
+  transition: background 0.2s ease;
+}
+
+.timestamp {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* =======================================
+   SYSTEM LOGS CARDS
+   ======================================= */
+
+.logs-empty {
+  padding: 48px 24px;
+  border-radius: 20px;
+  background: #f8fafc;
+  border: 1px solid rgba(15, 118, 110, 0.1);
+  text-align: center;
+  color: var(--muted);
+}
+
+.logs-empty p {
+  margin: 0;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.logs-empty small {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+[data-logs-container] {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  width: 100%;
+}
+
+.log-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fbfc 100%);
+  border: 1px solid rgba(15, 118, 110, 0.12);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(15, 118, 110, 0.05);
+  transition: all 0.25s ease;
+}
+
+.log-card:hover {
+  box-shadow: 0 8px 24px rgba(15, 118, 110, 0.12);
+  border-color: rgba(15, 118, 110, 0.24);
+}
+
+.log-card.log-danger {
+  border-left: 4px solid var(--danger);
+  background: linear-gradient(180deg, rgba(220, 38, 38, 0.02) 0%, #ffffff 100%);
+}
+
+.log-card.log-warning {
+  border-left: 4px solid var(--warning);
+  background: linear-gradient(180deg, rgba(249, 115, 22, 0.02) 0%, #ffffff 100%);
+}
+
+.log-card.log-info {
+  border-left: 4px solid var(--accent);
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.02) 0%, #ffffff 100%);
+}
+
+.log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.log-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.log-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: #f0f4f9;
+  font-size: 14px;
+}
+
+.log-type {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(15, 118, 110, 0.1);
+  color: var(--brand-dark);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.log-source {
+  color: var(--muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.log-time {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.log-message {
+  padding: 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.log-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid rgba(15, 118, 110, 0.08);
+}
+
+.log-severity {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.log-severity.danger {
+  background: rgba(220, 38, 38, 0.15);
+  color: var(--danger);
+}
+
+.log-severity.warning {
+  background: rgba(249, 115, 22, 0.15);
+  color: var(--warning);
+}
+
+.log-severity.info {
+  background: rgba(37, 99, 235, 0.15);
+  color: var(--accent);
+}
+
 @media (max-width: 1080px) {
   .overview-grid,
   .dashboard-grid,

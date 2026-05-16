@@ -367,13 +367,31 @@
         <section class="panel">
           <div class="panel-header">
             <div>
-              <p class="eyebrow">Latest First</p>
-              <h2>Realtime Log Stream</h2>
+              <p class="eyebrow">Historical Intelligence</p>
+              <h2>Telemetry Stream</h2>
             </div>
           </div>
 
+          <div class="logs-toolbar">
+            <input type="search"
+              id="logs-search"
+              class="toolbar-input"
+              placeholder="Search logs..."
+              onchange="window.__setLogFilter?.('search', this.value)">
+
+            <select id="logs-severity-filter"
+              class="toolbar-select"
+              data-filter="severity"
+              onchange="window.__setLogFilter?.('severity', this.value || null)">
+              <option value="">All Severities</option>
+              <option value="danger">Danger</option>
+              <option value="warning">Warning</option>
+              <option value="info">Info</option>
+            </select>
+          </div>
+
           <div class="table-wrap">
-            <table class="data-table">
+            <table class="data-table telemetry-table">
               <thead>
                 <tr>
                   <th>Timestamp</th>
