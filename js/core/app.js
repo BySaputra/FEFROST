@@ -1,7 +1,9 @@
-import "./monitoring.js";
-import "./products.js";
-import "./fefo.js";
-import "./logs.js";
+import "./store.js";
+import "../modules/monitoring.js";
+import "../modules/products.js";
+import "../modules/fefo.js";
+import "../modules/logs.js";
+import "../modules/alerts.js";
 
 const sections = [
   "monitoring",

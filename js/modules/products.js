@@ -9,7 +9,17 @@ from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import {
   database
 }
-from "../config/firebase-config.js";
+from "../../config/firebase-config.js";
+
+import {
+  FIREBASE_PATHS
+}
+from "../utils/firebase-paths.js";
+
+import {
+  formatTemperature
+}
+from "../utils/telemetry.js";
 
 const productList =
 document.getElementById("product-list");
@@ -24,15 +34,6 @@ const inventoryCount =
 document.getElementById("inventory-count");
 
 let productsCache = [];
-
-function formatTemperature(value) {
-  const temperature =
-    Number(value);
-
-  if (!Number.isFinite(temperature)) return "-- \u00B0C";
-
-  return `${temperature.toFixed(1)} \u00B0C`;
-}
 
 function getSensitivityLabel(value) {
   const labels = {
@@ -154,7 +155,7 @@ if (addButton) {
     }
 
     push(
-      ref(database, "fefrost/products"),
+      ref(database, FIREBASE_PATHS.products),
       {
         product_name:
           productName,
@@ -167,7 +168,9 @@ if (addButton) {
         ideal_temp:
           idealTemp
       }
-    );
+    ).catch((error) => {
+      console.error("[PRODUCTS] Failed to add product:", error);
+    });
 
     document.getElementById("product-name").value = "";
     document.getElementById("category").value = "";
@@ -181,7 +184,7 @@ searchInput
   ?.addEventListener("input", renderProducts);
 
 onValue(
-  ref(database, "fefrost/products"),
+  ref(database, FIREBASE_PATHS.products),
   (snapshot) => {
     productsCache = [];
 
@@ -196,13 +199,18 @@ onValue(
     }
 
     renderProducts();
+  },
+  (error) => {
+    console.error("[PRODUCTS] Listener failed:", error);
   }
 );
 
 window.deleteProduct = function(key) {
   remove(
-    ref(database, `fefrost/products/${key}`)
-  );
+    ref(database, `${FIREBASE_PATHS.products}/${key}`)
+  ).catch((error) => {
+    console.error("[PRODUCTS] Failed to delete product:", error);
+  });
 };
 
 window.exportProductsData = function() {
