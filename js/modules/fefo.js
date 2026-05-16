@@ -1,250 +1,363 @@
-import {
-  ref,
-  onValue
-}
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+// js/modules/fefo.js
 
-import {
-  database
-}
-from "../../config/firebase-config.js";
+import { store } from "../core/store.js";
 
-import {
-  FIREBASE_PATHS
-}
-from "../utils/firebase-paths.js";
-
-import {
-  normalizeNumber,
-  normalizeTelemetry,
-  calculateTempDelta,
-  calculateDaysRemaining
-}
-from "../utils/telemetry.js";
+// ===============================
+// ELEMENT
+// ===============================
 
 const fefoList =
 document.getElementById("fefo-list");
 
-const runtime =
-window.__FEFROST_FEFO__ || {
-  initialized: false,
-  liveUnsubscribe: null,
-  productsUnsubscribe: null,
-  calculateTimer: null,
-  monitoringData: null,
-  productsData: null
-};
+let lastStorageTemp = null;
+let debounceTimer = null;
+let lastRenderSignature = "";
 
-window.__FEFROST_FEFO__ = runtime;
+const TEMP_THRESHOLD = 0.5;
+const DEBOUNCE_MS = 300;
 
-function scheduleCalculateFEFO() {
-  if (runtime.calculateTimer) return;
+// ===============================
+// CONFIG
+// ===============================
 
-  runtime.calculateTimer =
-    window.setTimeout(() => {
-      runtime.calculateTimer =
-        null;
+const SAFE_LIMIT = 5;
+const WARNING_LIMIT = 10;
 
-      calculateFEFO();
-    }, 0);
+function isFiniteNumber(value) {
+  return Number.isFinite(value) && !Number.isNaN(value);
 }
 
-function getPriorityClass(status) {
-  if (status === "CRITICAL") return "danger";
-  if (status === "WARNING") return "warning";
-
-  return "safe";
-}
-
-function renderEmptyRow() {
-  if (!fefoList) return;
-
-  fefoList.innerHTML = `
-    <tr>
-      <td class="empty-row" colspan="4">
-        Waiting for monitoring and inventory data.
-      </td>
-    </tr>
-  `;
-}
-
-function renderFEFO(results) {
-  if (!fefoList) return;
-
-  if (results.length === 0) {
-    renderEmptyRow();
-
-    return;
+function buildRenderSignature(products) {
+  if (!Array.isArray(products)) {
+    return "";
   }
 
-  fefoList.innerHTML =
-    results.map((item, index) => {
-      const score =
-        Number(item.score);
-
-      const riskWidth =
-        Math.min(score * 8, 100);
-
-      const riskColor =
-        item.status === "CRITICAL"
-          ? "var(--danger)"
-          : item.status === "WARNING"
-            ? "var(--warning)"
-            : "var(--safe)";
-
-      return `
-        <tr>
-          <td>
-            <strong>#${index + 1}</strong>
-          </td>
-          <td>${item.name}</td>
-          <td>
-            ${item.score}
-            <span class="risk-bar"
-              style="--risk-width: ${riskWidth}%; --risk-color: ${riskColor};">
-              <span></span>
-            </span>
-          </td>
-          <td>
-            <span class="badge ${getPriorityClass(item.status)}">
-              ${item.status}
-            </span>
-          </td>
-        </tr>
-      `;
-    }).join("");
+  return products
+    .map((product) => {
+      const name = product.product_name || "";
+      const score = product.risk_score;
+      const status = product.status || "";
+      const expired = product.expired_date || "";
+      return `${name}|${score}|${status}|${expired}`;
+    })
+    .join("::");
 }
 
-function calculateFEFO() {
-  if (!runtime.monitoringData || !runtime.productsData || !Array.isArray(runtime.productsData)) {
-    renderEmptyRow();
-
-    return;
+function shouldRecalculate(currentTemp) {
+  if (!isFiniteNumber(currentTemp)) {
+    return false;
   }
 
-  const results = [];
+  if (!isFiniteNumber(lastStorageTemp)) {
+    return true;
+  }
 
-  runtime.productsData.forEach((product) => {
-    try {
-      // Validate required product fields
-      if (!product || typeof product !== "object") {
-        return;
-      }
+  return Math.abs(currentTemp - lastStorageTemp) >= TEMP_THRESHOLD;
+}
 
-      const actualTemp =
-        normalizeNumber(runtime.monitoringData.storage_temp);
+function scheduleFEFOUpdate(force = false) {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+  }
 
-      const idealTemp =
-        normalizeNumber(product.ideal_temp);
+  debounceTimer = window.setTimeout(() => {
+    debounceTimer = null;
+    generateFEFO(force);
+  }, DEBOUNCE_MS);
+}
 
-      const sensitivity =
-        normalizeNumber(product.sensitivity);
+// ===============================
+// HELPERS
+// ===============================
 
-      if (
-        !Number.isFinite(actualTemp) ||
-        !Number.isFinite(idealTemp) ||
-        !Number.isFinite(sensitivity) ||
-        sensitivity <= 0
-      ) {
-        return;
-      }
+// HITUNG SELISIH HARI
 
-      const deltaT =
-        calculateTempDelta(actualTemp, idealTemp);
+function getRemainingDays(expiredDate) {
 
-      const remainingDays =
-        calculateDaysRemaining(product.expired_date);
+  if (!expiredDate) return 0;
 
-      const expiredFactor =
-        1 / remainingDays;
+  const today =
+  new Date();
 
-      const riskScore =
-        (deltaT * sensitivity) +
-        (expiredFactor * 10);
+  const expired =
+  new Date(expiredDate);
 
-      let status =
-        "SAFE";
+  const diffTime =
+  expired - today;
 
-      if (riskScore > 10) {
-        status =
-          "CRITICAL";
-      }
-      else if (riskScore > 5) {
-        status =
-          "WARNING";
-      }
-
-      results.push({
-        name:
-          product.product_name || "--",
-        score:
-          riskScore.toFixed(2),
-        status
-      });
-
-    } catch (error) {
-      console.warn("[FEFO] Error calculating product risk:", product, error);
-    }
-  });
-
-  results.sort(
-    (a, b) => Number(b.score) - Number(a.score)
+  const diffDays =
+  Math.ceil(
+    diffTime / (1000 * 60 * 60 * 24)
   );
 
-  renderFEFO(results);
+  return diffDays;
+
 }
 
-export function initFEFO() {
-  if (runtime.initialized) return;
+// HITUNG STATUS
 
-  runtime.liveUnsubscribe =
-    onValue(
-      ref(database, FIREBASE_PATHS.live),
-      (snapshot) => {
-        runtime.monitoringData =
-          snapshot.exists()
-            ? normalizeTelemetry(snapshot.val())
-            : null;
+function getStatus(score) {
 
-        scheduleCalculateFEFO();
-      },
-      (error) => {
-        console.error("[FEFO] Live telemetry listener failed:", error);
-      }
+  if (score > WARNING_LIMIT) {
+
+    return "CRITICAL";
+
+  }
+
+  else if (score > SAFE_LIMIT) {
+
+    return "WARNING";
+
+  }
+
+  return "SAFE";
+
+}
+
+// ===============================
+// RISK SCORE ENGINE
+// ===============================
+
+function calculateRiskScore(
+  product,
+  storageTemp
+) {
+
+  // VALIDASI
+
+  if (
+    storageTemp === undefined ||
+    storageTemp === null
+  ) {
+
+    return {
+      score: 0,
+      status: "SAFE"
+    };
+
+  }
+
+  // PRODUCT DATA
+
+  const idealTemp =
+  Number(product.ideal_temp || 4);
+
+  const sensitivity =
+  Number(product.sensitivity || 1);
+
+  // TEMPERATURE DEVIATION
+
+  const deltaTemp =
+  Math.abs(
+    storageTemp - idealTemp
+  );
+
+  // REMAINING DAYS
+
+  const remainingDays =
+  getRemainingDays(
+    product.expired_date
+  );
+
+  // EXPIRED FACTOR
+
+  const expiredFactor =
+  remainingDays > 0
+    ? 1 / remainingDays
+    : 10;
+
+  // FINAL SCORE
+
+  const score =
+    (
+      deltaTemp * sensitivity
+    ) +
+    (
+      expiredFactor * 10
     );
 
-  runtime.productsUnsubscribe =
-    onValue(
-      ref(database, FIREBASE_PATHS.products),
-      (snapshot) => {
-        runtime.productsData =
-          snapshot.exists()
-            ? snapshot.val()
-            : null;
+  // STATUS
 
-        scheduleCalculateFEFO();
-      },
-      (error) => {
-        console.error("[FEFO] Products listener failed:", error);
-      }
-    );
+  const status =
+  getStatus(score);
 
-  runtime.initialized =
-    true;
+  return {
+
+    score:
+    Number(score.toFixed(2)),
+
+    status
+
+  };
+
 }
 
-export function stopFEFO() {
-  runtime.liveUnsubscribe?.();
-  runtime.productsUnsubscribe?.();
+// ===============================
+// FEFO ENGINE
+// ===============================
 
-  runtime.liveUnsubscribe =
-    null;
+function generateFEFO(force = false) {
 
-  runtime.productsUnsubscribe =
-    null;
+  // STORE DATA
 
-  runtime.initialized =
-    false;
+  const liveData =
+    store.liveData;
+
+  const products =
+    store.productsData;
+
+  // VALIDASI
+
+  if (!liveData) return;
+
+  if (!Array.isArray(products)) return;
+
+  if (products.length === 0) {
+    fefoList.innerHTML = `
+      <div class="empty-state">
+        No products available
+      </div>
+    `;
+
+    lastRenderSignature = "";
+    return;
+  }
+
+  // STORAGE TEMP
+
+  const storageTemp =
+    Number(liveData.storage_temp);
+
+  if (!isFiniteNumber(storageTemp)) {
+    console.warn("[FEFO] Invalid storage temperature:", liveData.storage_temp);
+    return;
+  }
+
+  if (!force && !shouldRecalculate(storageTemp)) {
+    return;
+  }
+
+  lastStorageTemp = storageTemp;
+
+  // PROCESS PRODUCTS
+
+  const analyzedProducts =
+    products.map((product) => {
+      const result =
+        calculateRiskScore(
+          product,
+          storageTemp
+        );
+
+      return {
+        ...product,
+        risk_score:
+          result.score,
+        status:
+          result.status
+      };
+    });
+
+  // SORT DESCENDING
+
+  analyzedProducts.sort(
+    (a, b) =>
+      b.risk_score - a.risk_score
+  );
+
+  // RENDER
+
+  renderFEFO(
+    analyzedProducts
+  );
 }
 
-initFEFO();
+// ===============================
+// RENDER UI
+// ===============================
+
+function renderFEFO(products) {
+  const signature = buildRenderSignature(products);
+
+  if (signature === lastRenderSignature) {
+    return;
+  }
+
+  lastRenderSignature = signature;
+  fefoList.innerHTML = "";
+
+  products.forEach(
+    (product, index) => {
+      const item =
+        document.createElement("div");
+
+      item.classList.add(
+        "fefo-card"
+      );
+
+      item.innerHTML = `
+        <div class="fefo-rank">
+          #${index + 1}
+        </div>
+
+        <div class="fefo-content">
+          <h3>
+            ${product.product_name}
+          </h3>
+
+          <p>
+            Category:
+            ${product.category || "-"}
+          </p>
+
+          <p>
+            Risk Score:
+            ${product.risk_score}
+          </p>
+
+          <p>
+            Sensitivity:
+            ${product.sensitivity}
+          </p>
+
+          <p>
+            Expired:
+            ${product.expired_date}
+          </p>
+        </div>
+
+        <div class="fefo-status ${product.status.toLowerCase()}">
+          ${product.status}
+        </div>
+      `;
+
+      fefoList.appendChild(
+        item
+      );
+    }
+  );
+
+  console.log(
+    "[FEFO] Rendered:",
+    products
+  );
+}
+
+
+// ===============================
+// REALTIME EVENTS
+// ===============================
+
+// LIVE DATA CHANGED
+
+window.addEventListener(
+  "liveDataUpdated",
+  () => scheduleFEFOUpdate(false)
+);
+
+// PRODUCTS CHANGED
+
+window.addEventListener(
+  "productsUpdated",
+  () => scheduleFEFOUpdate(true)
+);
