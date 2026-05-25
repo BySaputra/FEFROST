@@ -663,6 +663,11 @@ select:focus {
   color: var(--danger);
 }
 
+.fefo-status.danger {
+  background: rgba(220, 38, 38, 0.12);
+  color: var(--danger);
+}
+
 .empty-state {
   padding: 32px;
   border-radius: 20px;

@@ -31,6 +31,7 @@ export function normalizeTelemetry(data) {
     return {
       room_temp: 0,
       storage_temp: 0,
+      storage_humidity: 0,
       humidity: 0,
       timestamp: Date.now(),
       status: "UNKNOWN"
@@ -40,6 +41,7 @@ export function normalizeTelemetry(data) {
   const roomTemp = normalizeNumber(data.room_temp);
   const storageTemp = normalizeNumber(data.storage_temp);
   const humidity = normalizeNumber(data.humidity);
+  const storageHumidity = normalizeNumber(data.storage_humidity ?? data.humidity);
   const timestamp = normalizeNumber(data.timestamp) || Date.now();
 
   // Determine status based on storage temperature
@@ -53,6 +55,7 @@ export function normalizeTelemetry(data) {
   return {
     room_temp: roomTemp,
     storage_temp: storageTemp,
+    storage_humidity: storageHumidity,
     humidity,
     timestamp,
     status
