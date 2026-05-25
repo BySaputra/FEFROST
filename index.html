@@ -260,42 +260,76 @@
                 Product Name
                 <input type="text"
                   id="product-name"
-                  placeholder="Frozen salmon">
+                  placeholder="Fresh Milk">
               </label>
 
               <label>
-                Category
-                <input type="text"
-                  id="category"
-                  placeholder="Seafood">
-              </label>
-
-              <label>
-                Entry Date
+                Expiry Date
                 <input type="date"
-                  id="entry-date">
+                  id="expired-date"
+                  required>
               </label>
 
               <label>
-                Expired Date
-                <input type="date"
-                  id="expired-date">
-              </label>
-
-              <label>
-                Sensitivity
-                <select id="sensitivity">
-                  <option value="1">Low</option>
-                  <option value="2">Medium</option>
-                  <option value="3">High</option>
-                </select>
-              </label>
-
-              <label>
-                Ideal Temperature
+                Min Temperature (°C)
                 <input type="number"
-                  id="ideal-temp"
-                  placeholder="4">
+                  id="temp-min"
+                  placeholder="2"
+                  step="0.1"
+                  required>
+              </label>
+
+              <label>
+                Max Temperature (°C)
+                <input type="number"
+                  id="temp-max"
+                  placeholder="6"
+                  step="0.1"
+                  required>
+              </label>
+
+              <label>
+                Min Humidity (%)
+                <input type="number"
+                  id="humidity-min"
+                  placeholder="60"
+                  min="0"
+                  max="100"
+                  step="1"
+                  required>
+              </label>
+
+              <label>
+                Max Humidity (%)
+                <input type="number"
+                  id="humidity-max"
+                  placeholder="80"
+                  min="0"
+                  max="100"
+                  step="1"
+                  required>
+              </label>
+
+              <label>
+                Temperature Factor (0-1)
+                <input type="number"
+                  id="temperature-factor"
+                  placeholder="0.35"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  required>
+              </label>
+
+              <label>
+                Humidity Factor (0-1)
+                <input type="number"
+                  id="humidity-factor"
+                  placeholder="0.15"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  required>
               </label>
             </div>
 
@@ -318,11 +352,11 @@
                 <thead>
                   <tr>
                     <th>Product</th>
-                    <th>Category</th>
-                    <th>Entry</th>
-                    <th>Expired</th>
-                    <th>Sensitivity</th>
-                    <th>Ideal Temp</th>
+                    <th>Expiry Date</th>
+                    <th>Temperature Range</th>
+                    <th>Humidity Range</th>
+                    <th>Temp Factor</th>
+                    <th>Humidity Factor</th>
                     <th>Action</th>
                   </tr>
                 </thead>

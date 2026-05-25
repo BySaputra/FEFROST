@@ -19,6 +19,32 @@ import {
 }
 from "../utils/telemetry.js";
 
+// PRODUCT NORMALIZATION - Support new environmental schema with fallback
+const PRODUCT_FALLBACKS = {
+  temp_min: 2,
+  temp_max: 8,
+  humidity_min: 50,
+  humidity_max: 80,
+  temperature_factor: 0.2,
+  humidity_factor: 0.1
+};
+
+function normalizeProduct(product) {
+  return {
+    // New schema fields
+    name: product.name || product.product_name || "--",
+    expiry_date: product.expiry_date || product.expired_date || "--",
+    temp_min: Number(product.temp_min) || PRODUCT_FALLBACKS.temp_min,
+    temp_max: Number(product.temp_max) || PRODUCT_FALLBACKS.temp_max,
+    humidity_min: Number(product.humidity_min) || PRODUCT_FALLBACKS.humidity_min,
+    humidity_max: Number(product.humidity_max) || PRODUCT_FALLBACKS.humidity_max,
+    temperature_factor: Number(product.temperature_factor) || PRODUCT_FALLBACKS.temperature_factor,
+    humidity_factor: Number(product.humidity_factor) || PRODUCT_FALLBACKS.humidity_factor,
+    // Keep original fields for backward compatibility
+    ...product
+  };
+}
+
 // GLOBAL STORE - Centralized realtime data management
 // All modules read data from this store via CustomEvent listeners
 
@@ -135,11 +161,14 @@ try {
       if (snapshot.exists()) {
         snapshot.forEach((child) => {
 
+          const productData = child.val();
+          const normalizedProduct = normalizeProduct(productData);
+
           products.push({
 
             key: child.key,
 
-            ...child.val()
+            ...normalizedProduct
 
           });
 

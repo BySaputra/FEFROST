@@ -35,14 +35,74 @@ document.getElementById("inventory-count");
 
 let productsCache = [];
 
-function getSensitivityLabel(value) {
-  const labels = {
-    1: "Low",
-    2: "Medium",
-    3: "High"
-  };
+// FALLBACK for backward compatibility
+const PRODUCT_FALLBACKS = {
+  temp_min: 2,
+  temp_max: 8,
+  humidity_min: 50,
+  humidity_max: 80,
+  temperature_factor: 0.2,
+  humidity_factor: 0.1
+};
 
-  return labels[Number(value)] || value || "--";
+// Normalize product with fallback values
+function normalizeProduct(product) {
+  return {
+    name: product.name || product.product_name || "--",
+    expiry_date: product.expiry_date || product.expired_date || "--",
+    temp_min: Number(product.temp_min) || PRODUCT_FALLBACKS.temp_min,
+    temp_max: Number(product.temp_max) || PRODUCT_FALLBACKS.temp_max,
+    humidity_min: Number(product.humidity_min) || PRODUCT_FALLBACKS.humidity_min,
+    humidity_max: Number(product.humidity_max) || PRODUCT_FALLBACKS.humidity_max,
+    temperature_factor: Number(product.temperature_factor) || PRODUCT_FALLBACKS.temperature_factor,
+    humidity_factor: Number(product.humidity_factor) || PRODUCT_FALLBACKS.humidity_factor,
+    // Keep original for compatibility
+    ...product
+  };
+}
+
+// Validation function
+function validateProduct(product) {
+  const errors = [];
+
+  if (!product.name || product.name.trim() === "") {
+    errors.push("Product name is required");
+  }
+
+  if (!product.expiry_date) {
+    errors.push("Expiry date is required");
+  }
+
+  const tempMin = Number(product.temp_min);
+  const tempMax = Number(product.temp_max);
+
+  if (isNaN(tempMin) || isNaN(tempMax)) {
+    errors.push("Temperature values must be numbers");
+  } else if (tempMin >= tempMax) {
+    errors.push("Min temperature must be less than max temperature");
+  }
+
+  const humidityMin = Number(product.humidity_min);
+  const humidityMax = Number(product.humidity_max);
+
+  if (isNaN(humidityMin) || isNaN(humidityMax)) {
+    errors.push("Humidity values must be numbers");
+  } else if (humidityMin >= humidityMax) {
+    errors.push("Min humidity must be less than max humidity");
+  }
+
+  const tempFactor = Number(product.temperature_factor);
+  const humidityFactor = Number(product.humidity_factor);
+
+  if (isNaN(tempFactor) || tempFactor < 0) {
+    errors.push("Temperature factor must be >= 0");
+  }
+
+  if (isNaN(humidityFactor) || humidityFactor < 0) {
+    errors.push("Humidity factor must be >= 0");
+  }
+
+  return errors;
 }
 
 function renderEmptyRow(message) {
@@ -50,7 +110,7 @@ function renderEmptyRow(message) {
 
   productList.innerHTML = `
     <tr>
-      <td class="empty-row" colspan="7">
+      <td class="empty-row" colspan="8">
         ${message}
       </td>
     </tr>
@@ -65,12 +125,11 @@ function renderProducts() {
 
   const filteredProducts =
     productsCache.filter((product) => {
+      const normalized = normalizeProduct(product);
       const searchable =
         [
-          product.product_name,
-          product.category,
-          product.entry_date,
-          product.expired_date
+          normalized.name,
+          normalized.expiry_date
         ]
           .join(" ")
           .toLowerCase();
@@ -94,20 +153,26 @@ function renderProducts() {
   }
 
   productList.innerHTML =
-    filteredProducts.map((product) => `
+    filteredProducts.map((product) => {
+      const normalized = normalizeProduct(product);
+      return `
       <tr>
         <td>
-          <strong>${product.product_name || "--"}</strong>
+          <strong>${normalized.name}</strong>
         </td>
-        <td>${product.category || "--"}</td>
-        <td>${product.entry_date || "--"}</td>
-        <td>${product.expired_date || "--"}</td>
+        <td>${normalized.expiry_date}</td>
         <td>
-          <span class="badge">
-            ${getSensitivityLabel(product.sensitivity)}
-          </span>
+          ${normalized.temp_min}°C - ${normalized.temp_max}°C
         </td>
-        <td>${formatTemperature(product.ideal_temp)}</td>
+        <td>
+          ${normalized.humidity_min}% - ${normalized.humidity_max}%
+        </td>
+        <td>
+          <span class="factor-badge" title="Temperature Sensitivity">T: ${normalized.temperature_factor.toFixed(2)}</span>
+        </td>
+        <td>
+          <span class="factor-badge" title="Humidity Sensitivity">H: ${normalized.humidity_factor.toFixed(2)}</span>
+        </td>
         <td>
           <button
             class="delete-btn"
@@ -116,67 +181,83 @@ function renderProducts() {
           </button>
         </td>
       </tr>
-    `).join("");
+    `;
+    }).join("");
 }
 
 if (addButton) {
   addButton.addEventListener("click", () => {
-    const productName =
-      document.getElementById("product-name").value.trim();
+    try {
+      // Collect form data
+      const productName =
+        document.getElementById("product-name").value.trim();
 
-    const category =
-      document.getElementById("category").value.trim();
+      const expiryDate =
+        document.getElementById("expired-date").value;
 
-    const entryDate =
-      document.getElementById("entry-date").value;
+      const tempMin =
+        Number(document.getElementById("temp-min").value);
 
-    const expiredDate =
-      document.getElementById("expired-date").value;
+      const tempMax =
+        Number(document.getElementById("temp-max").value);
 
-    const sensitivity =
-      Number(
-        document.getElementById("sensitivity").value
-      );
+      const humidityMin =
+        Number(document.getElementById("humidity-min").value);
 
-    const idealTemp =
-      Number(
-        document.getElementById("ideal-temp").value
-      );
+      const humidityMax =
+        Number(document.getElementById("humidity-max").value);
 
-    if (
-      !productName ||
-      !category ||
-      !entryDate ||
-      !expiredDate
-    ) {
-      alert("Please fill all fields!");
+      const temperatureFactor =
+        Number(document.getElementById("temperature-factor").value);
 
-      return;
-    }
+      const humidityFactor =
+        Number(document.getElementById("humidity-factor").value);
 
-    push(
-      ref(database, FIREBASE_PATHS.products),
-      {
-        product_name:
-          productName,
-        category,
-        entry_date:
-          entryDate,
-        expired_date:
-          expiredDate,
-        sensitivity,
-        ideal_temp:
-          idealTemp
+      // Build product object
+      const newProduct = {
+        name: productName,
+        expiry_date: expiryDate,
+        temp_min: tempMin,
+        temp_max: tempMax,
+        humidity_min: humidityMin,
+        humidity_max: humidityMax,
+        temperature_factor: temperatureFactor,
+        humidity_factor: humidityFactor
+      };
+
+      // Validate product
+      const validationErrors = validateProduct(newProduct);
+
+      if (validationErrors.length > 0) {
+        alert("Validation errors:\n\n" + validationErrors.join("\n"));
+        return;
       }
-    ).catch((error) => {
-      console.error("[PRODUCTS] Failed to add product:", error);
-    });
 
-    document.getElementById("product-name").value = "";
-    document.getElementById("category").value = "";
-    document.getElementById("entry-date").value = "";
-    document.getElementById("expired-date").value = "";
-    document.getElementById("ideal-temp").value = "";
+      // Submit to Firebase
+      push(
+        ref(database, FIREBASE_PATHS.products),
+        newProduct
+      ).then(() => {
+        // Clear form
+        document.getElementById("product-name").value = "";
+        document.getElementById("expired-date").value = "";
+        document.getElementById("temp-min").value = "";
+        document.getElementById("temp-max").value = "";
+        document.getElementById("humidity-min").value = "";
+        document.getElementById("humidity-max").value = "";
+        document.getElementById("temperature-factor").value = "";
+        document.getElementById("humidity-factor").value = "";
+        
+        console.log("[PRODUCTS] Product added successfully");
+      }).catch((error) => {
+        console.error("[PRODUCTS] Failed to add product:", error);
+        alert("Failed to add product: " + error.message);
+      });
+
+    } catch (error) {
+      console.error("[PRODUCTS] Form submission error:", error);
+      alert("Error processing form: " + error.message);
+    }
   });
 }
 
@@ -188,17 +269,26 @@ onValue(
   (snapshot) => {
     productsCache = [];
 
-    if (snapshot.exists()) {
-      snapshot.forEach((childSnapshot) => {
-        productsCache.push({
-          key:
-            childSnapshot.key,
-          ...childSnapshot.val()
+    try {
+      if (snapshot.exists()) {
+        snapshot.forEach((childSnapshot) => {
+          const productData = childSnapshot.val();
+          
+          // Normalize and apply fallback values
+          const normalizedProduct = normalizeProduct(productData);
+          
+          productsCache.push({
+            key: childSnapshot.key,
+            ...normalizedProduct
+          });
         });
-      });
-    }
+      }
 
-    renderProducts();
+      renderProducts();
+      
+    } catch (error) {
+      console.error("[PRODUCTS] Error processing snapshot:", error);
+    }
   },
   (error) => {
     console.error("[PRODUCTS] Listener failed:", error);
@@ -206,35 +296,49 @@ onValue(
 );
 
 window.deleteProduct = function(key) {
+  if (!confirm("Are you sure you want to delete this product?")) {
+    return;
+  }
+
   remove(
     ref(database, `${FIREBASE_PATHS.products}/${key}`)
-  ).catch((error) => {
+  ).then(() => {
+    console.log("[PRODUCTS] Product deleted successfully");
+  }).catch((error) => {
     console.error("[PRODUCTS] Failed to delete product:", error);
+    alert("Failed to delete product: " + error.message);
   });
 };
 
 window.exportProductsData = function() {
-  const content =
-    JSON.stringify(productsCache, null, 2);
+  try {
+    const content =
+      JSON.stringify(productsCache, null, 2);
 
-  const blob =
-    new Blob([content], {
-      type: "application/json"
-    });
+    const blob =
+      new Blob([content], {
+        type: "application/json"
+      });
 
-  const url =
-    URL.createObjectURL(blob);
+    const url =
+      URL.createObjectURL(blob);
 
-  const link =
-    document.createElement("a");
+    const link =
+      document.createElement("a");
 
-  link.href =
-    url;
+    link.href =
+      url;
 
-  link.download =
-    "fefrost-products.json";
+    link.download =
+      "fefrost-products.json";
 
-  link.click();
+    link.click();
 
-  URL.revokeObjectURL(url);
+    URL.revokeObjectURL(url);
+    
+    console.log("[PRODUCTS] Data exported successfully");
+  } catch (error) {
+    console.error("[PRODUCTS] Export failed:", error);
+    alert("Failed to export data: " + error.message);
+  }
 };

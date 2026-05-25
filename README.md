@@ -781,10 +781,8 @@ tail -f logs/system.log
 
 | Nama | Role | Email |
 |------|------|-------|
-| **Project Lead** | System Architecture | lead@fefrost.io |
-| **Firmware Engineer** | ESP32 Development | firmware@fefrost.io |
-| **Frontend Developer** | Dashboard UI/UX | frontend@fefrost.io |
-| **DevOps Engineer** | Firebase & Cloud | devops@fefrost.io |
+| **Bayu Saputra** | System Architecture, ESP32 Development, Dashboard UI/UX, Firebase & Cloud  | bayukurawa708@gmail.com |
+
 
 ### Contributors
 
