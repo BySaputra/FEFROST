@@ -71,8 +71,14 @@ function buildRenderSignature(products) {
       const expired = product.expired_date || product.expiry_date || "";
       const deltaTemp = product.delta_temperature;
       const deltaHumidity = product.delta_humidity;
+      const tempMin = product.temp_min;
+      const tempMax = product.temp_max;
+      const humidityMin = product.humidity_min;
+      const humidityMax = product.humidity_max;
+      const currentTemp = product.current_temperature;
+      const currentHumidity = product.current_humidity;
 
-      return `${name}|${baseScore}|${adaptiveScore}|${status}|${expired}|${deltaTemp}|${deltaHumidity}`;
+      return `${name}|${baseScore}|${adaptiveScore}|${status}|${expired}|${deltaTemp}|${deltaHumidity}|${tempMin}|${tempMax}|${humidityMin}|${humidityMax}|${currentTemp}|${currentHumidity}`;
     })
     .join("::");
 }
@@ -122,6 +128,65 @@ function getProductName(product) {
 
 function getExpiredDate(product) {
   return product.expired_date || product.expiry_date || "";
+}
+
+function formatPriorityScore(score) {
+  return toFiniteNumber(score, 0).toFixed(2);
+}
+
+function formatCompactNumber(value, decimals = 1) {
+  const numberValue =
+    toFiniteNumber(value, 0);
+
+  if (Number.isInteger(numberValue)) {
+    return String(numberValue);
+  }
+
+  return numberValue.toFixed(decimals);
+}
+
+function formatDisplayDate(dateValue) {
+  if (!dateValue) {
+    return "-";
+  }
+
+  const dateParts =
+    String(dateValue).split("-");
+
+  const displayDate =
+    dateParts.length === 3
+      ? new Date(
+          Number(dateParts[0]),
+          Number(dateParts[1]) - 1,
+          Number(dateParts[2])
+        )
+      : new Date(dateValue);
+
+  if (!isFiniteNumber(displayDate.getTime())) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  }).format(displayDate);
+}
+
+function getSortableDate(product) {
+  const dateValue =
+    product.entry_date || product.created_at;
+
+  if (!dateValue) {
+    return null;
+  }
+
+  const sortableDate =
+    new Date(dateValue);
+
+  return isFiniteNumber(sortableDate.getTime())
+    ? sortableDate.getTime()
+    : null;
 }
 
 // HITUNG SELISIH HARI
@@ -210,11 +275,12 @@ function calculateBaseScore(remainingDays) {
 // HITUNG STATUS
 
 function getStatus(deltaTemp, deltaHumidity) {
-  const isInsideSafeRange =
+
+  const isSafe =
     deltaTemp === 0 &&
     deltaHumidity === 0;
 
-  if (isInsideSafeRange) {
+  if (isSafe) {
     return "SAFE";
   }
 
@@ -228,7 +294,6 @@ function getStatus(deltaTemp, deltaHumidity) {
 
   return "WARNING";
 }
-
 // ===============================
 // RISK SCORE ENGINE
 // ===============================
@@ -381,7 +446,7 @@ function generateFEFO(force = false) {
   // PROCESS PRODUCTS
 
   const analyzedProducts =
-    products.map((product) => {
+    products.map((product, originalIndex) => {
       const result =
         calculateRiskScore(
           product,
@@ -402,6 +467,8 @@ function generateFEFO(force = false) {
           roundMetric(storageHumidity, 1),
         risk_score:
           result.adaptive_score,
+        original_index:
+          originalIndex,
         status:
           result.status
       };
@@ -410,8 +477,34 @@ function generateFEFO(force = false) {
   // SORT DESCENDING
 
   analyzedProducts.sort(
-    (a, b) =>
-      b.adaptive_score - a.adaptive_score
+    (a, b) => {
+      const scoreDifference =
+        b.adaptive_score - a.adaptive_score;
+
+      if (scoreDifference !== 0) {
+        return scoreDifference;
+      }
+
+      const aDate =
+        getSortableDate(a);
+
+      const bDate =
+        getSortableDate(b);
+
+      if (aDate !== null && bDate !== null && aDate !== bDate) {
+        return aDate - bDate;
+      }
+
+      if (aDate !== null && bDate === null) {
+        return -1;
+      }
+
+      if (aDate === null && bDate !== null) {
+        return 1;
+      }
+
+      return a.original_index - b.original_index;
+    }
   );
 
   // RENDER
@@ -444,69 +537,154 @@ function renderFEFO(products) {
         "fefo-card"
       );
 
+      const displayScore =
+        product.risk_score > 9999
+          ? "9999+"
+          : formatPriorityScore(product.risk_score);
+
+      const expirationDate =
+        formatDisplayDate(product.expired_date);
+
+      const invalidExpiration =
+        expirationDate === "-";
+
+      const currentTemperature =
+        formatCompactNumber(product.current_temperature);
+
+      const currentHumidity =
+        formatCompactNumber(product.current_humidity);
+
+      const tempMin =
+        formatCompactNumber(product.temp_min);
+
+      const tempMax =
+        formatCompactNumber(product.temp_max);
+
+      const humidityMin =
+        formatCompactNumber(product.humidity_min);
+
+      const humidityMax =
+        formatCompactNumber(product.humidity_max);
+
+      const deltaTemperature =
+        toFiniteNumber(product.delta_temperature, 0);
+
+      const deltaHumidity =
+        toFiniteNumber(product.delta_humidity, 0);
+
+      const tempDeviationRow =
+        deltaTemperature > 0
+          ? `
+            <div class="fefo-detail fefo-deviation">
+              <span>
+                Temp deviation:
+              </span>
+
+              <strong>
+                +${formatCompactNumber(deltaTemperature)}&deg;C
+              </strong>
+            </div>
+          `
+          : "";
+
+      const humidityDeviationRow =
+        deltaHumidity > 0
+          ? `
+            <div class="fefo-detail fefo-deviation">
+              <span>
+                Humidity deviation:
+              </span>
+
+              <strong>
+                +${formatCompactNumber(deltaHumidity)}%
+              </strong>
+            </div>
+          `
+          : "";
+
+      const invalidDateWarning =
+        invalidExpiration
+          ? `
+            <small class="fefo-data-warning">
+              Invalid date - check data
+            </small>
+          `
+          : "";
+
       item.innerHTML = `
-        <div class="fefo-rank">
-          #${index + 1}
+        <div class="fefo-card-header">
+          <div class="fefo-title-row">
+            <span class="fefo-rank">
+              #${index + 1}
+            </span>
+
+            <h3>
+              ${product.product_name}
+            </h3>
+          </div>
+
+          <div class="fefo-status ${product.status.toLowerCase()}">
+            ${product.status}
+          </div>
         </div>
 
         <div class="fefo-content">
-          <h3>
-            ${product.product_name}
-          </h3>
+          <div class="fefo-priority">
+            <span>
+              Priority Score
+            </span>
 
-          <p>
-            Category:
-            ${product.category || "-"}
-          </p>
+            <strong>
+              ${displayScore}
+            </strong>
+          </div>
 
-          <p>
-            Temperature Range:
-            ${product.temp_min} - ${product.temp_max} &deg;C
-          </p>
+          <div class="fefo-detail-grid">
+            <div class="fefo-detail">
+              <span>
+                Expires:
+              </span>
 
-          <p>
-            Humidity Range:
-            ${product.humidity_min} - ${product.humidity_max} %
-          </p>
+              <strong>
+                ${expirationDate}
+              </strong>
 
-          <p>
-            Current Temperature:
-            ${product.current_temperature} &deg;C
-          </p>
+              ${invalidDateWarning}
+            </div>
 
-          <p>
-            Current Humidity:
-            ${product.current_humidity} %
-          </p>
+            <div class="fefo-detail">
+              <span>
+                Storage:
+              </span>
 
-          <p>
-            Delta Temperature:
-            ${product.delta_temperature} &deg;C
-          </p>
+              <strong>
+                ${currentTemperature}&deg;C &bull; ${currentHumidity}%
+              </strong>
+            </div>
 
-          <p>
-            Delta Humidity:
-            ${product.delta_humidity} %
-          </p>
+            <div class="fefo-detail">
+              <span>
+                Safe Range:
+              </span>
 
-          <p>
-            Base Score:
-            ${product.base_score}
-          </p>
+              <strong>
+                ${tempMin}&deg;C - ${tempMax}&deg;C
+              </strong>
+            </div>
 
-          <p>
-            Adaptive Score:
-            ${product.adaptive_score}
-          </p>
+            <div class="fefo-detail">
+              <span>
+                Humidity Range:
+              </span>
 
-          <p>
-            Expired:
-            ${product.expired_date || "-"}
-          </p>
-        </div>
+              <strong>
+                ${humidityMin}% - ${humidityMax}%
+              </strong>
+            </div>
 
-        <div class="fefo-status ${product.status.toLowerCase()}">
-          ${product.status}
+            ${tempDeviationRow}
+            ${humidityDeviationRow}
+          </div>
         </div>
       `;
 
