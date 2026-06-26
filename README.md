@@ -19,7 +19,7 @@
 
 ## 📋 Overview Project
 
-**FEFROST** adalah sistem Internet of Things (IoT) berbasis ESP32 yang dirancang untuk monitoring dan manajemen cold storage secara real-time. Sistem ini mengintegrasikan teknologi sensor suhu canggih, cloud computing Firebase, dan algoritma Adaptive FEFO (First Expired, First Out) untuk optimalisasi distribusi produk dalam cold storage.
+**FEFROST** adalah sistem Internet of Things (IoT) berbasis ESP32 yang dirancang untuk monitoring dan manajemen cold storage secara real-time. Sistem ini mengintegrasikan teknologi sensor suhu, cloud computing Firebase, dan algoritma Adaptive FEFO (First Expired, First Out) untuk optimalisasi distribusi produk dalam cold storage.
 
 Proyek ini merupakan implementasi **riset engineering** yang menggabungkan:
 - 🌡️ **Sensor Monitoring** - Pengukuran real-time suhu dan kelembapan
@@ -46,7 +46,7 @@ Menciptakan sistem manajemen cold storage yang **intelligent, scalable, dan effi
 
 | # | Fitur | Deskripsi |
 |---|-------|-----------|
-| 1 | 🌡️ **Real-time Monitoring** | Monitoring suhu dan kelembapan 24/7 dengan interval pengukuran 5 detik |
+| 1 | 🌡️ **Real-time Monitoring** | Monitoring suhu dan kelembapan 24/7 dengan interval pengukuran 5 menit |
 | 2 | 📱 **Live Dashboard** | Interface web responsif untuk visualisasi data real-time |
 | 3 | 🤖 **Adaptive FEFO** | Algoritma cerdas untuk prioritas distribusi otomatis berdasar tanggal expired |
 | 4 | 📊 **Data Analytics** | Historical data tracking dan trend analysis untuk optimalisasi |
@@ -80,7 +80,7 @@ Menciptakan sistem manajemen cold storage yang **intelligent, scalable, dan effi
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                        FEFROST Architecture                   │
+│                        FEFROST Architecture                  │
 └──────────────────────────────────────────────────────────────┘
 
         ┌─────────────────────┐
@@ -104,8 +104,13 @@ Menciptakan sistem manajemen cold storage yang **intelligent, scalable, dan effi
         │ Firebase Realtime Database  │
         │ - Real-time Data Storage    │
         │ - Authentication            │
-        │ - Data Synchronization      │
+        │ - Data Synchronization      │      
         └──────────┬──────────────────┘
+                   │
+        ┌──────────▼──────────────────┐
+        │   Cloud Processing          │
+        │   - Data Processing         │
+        └─────────────────────────────┘
                    │
         ┌──────────▼──────────────────┐
         │   Web Dashboard             │
@@ -121,7 +126,7 @@ Menciptakan sistem manajemen cold storage yang **intelligent, scalable, dan effi
 Sensors (DHT22, DS18B20)
     ↓
 [ESP32 - Data Collection]
-    ↓ (Every 5 seconds)
+    ↓ (Every 5 minute)
 [Data Validation & Processing]
     ↓
 [Adaptive FEFO Logic Engine]
