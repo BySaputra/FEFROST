@@ -35,71 +35,139 @@ document.getElementById("inventory-count");
 
 let productsCache = [];
 
-// FALLBACK for backward compatibility
-const PRODUCT_FALLBACKS = {
-  temp_min: 2,
-  temp_max: 8,
-  humidity_min: 50,
-  humidity_max: 80,
-  temperature_factor: 0.2,
-  humidity_factor: 0.1
-};
+function injectRangeInputStyles() {
+  if (document.getElementById("range-input-styles")) {
+    return;
+  }
 
-// Normalize product with fallback values
+  const style = document.createElement("style");
+  style.id = "range-input-styles";
+  style.textContent = `
+    .range-input-group {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      align-items: center;
+    }
+
+    .range-input {
+      width: 100%;
+      box-sizing: border-box;
+    }
+  `;
+
+  document.head.appendChild(style);
+}
+
+function setupRangeInputs() {
+  injectRangeInputStyles();
+
+  const temperatureInput = document.getElementById("temperature-range");
+  if (temperatureInput) {
+    const temperatureLabel = temperatureInput.closest("label");
+    if (temperatureLabel) {
+      const temperatureGroup = document.createElement("div");
+      temperatureGroup.className = "range-input-group";
+      temperatureGroup.innerHTML = `
+        <input type="number" id="temperature-range-min" class="range-input" step="any" inputmode="decimal" placeholder="Min" aria-label="Temperature minimum">
+        <input type="number" id="temperature-range-max" class="range-input" step="any" inputmode="decimal" placeholder="Max" aria-label="Temperature maximum">
+      `;
+      temperatureInput.replaceWith(temperatureGroup);
+      temperatureLabel.insertBefore(temperatureGroup, temperatureLabel.firstChild);
+    }
+  }
+
+  const humidityInput = document.getElementById("humidity-range");
+  if (humidityInput) {
+    const humidityLabel = humidityInput.closest("label");
+    if (humidityLabel) {
+      const humidityGroup = document.createElement("div");
+      humidityGroup.className = "range-input-group";
+      humidityGroup.innerHTML = `
+        <input type="number" id="humidity-range-min" class="range-input" step="any" inputmode="decimal" placeholder="Min" min="0" aria-label="Humidity minimum">
+        <input type="number" id="humidity-range-max" class="range-input" step="any" inputmode="decimal" placeholder="Max" min="0" aria-label="Humidity maximum">
+      `;
+      humidityInput.replaceWith(humidityGroup);
+      humidityLabel.insertBefore(humidityGroup, humidityLabel.firstChild);
+    }
+  }
+}
+
+function buildRangeString(minValue, maxValue) {
+  const normalizedMin = typeof minValue === "string"
+    ? minValue.trim()
+    : String(minValue ?? "");
+
+  const normalizedMax = typeof maxValue === "string"
+    ? maxValue.trim()
+    : String(maxValue ?? "");
+
+  return `${normalizedMin}-${normalizedMax}`;
+}
+
+// Normalize product to simplified schema
 function normalizeProduct(product) {
   return {
-    name: product.name || product.product_name || "--",
-    expiry_date: product.expiry_date || product.expired_date || "--",
-    temp_min: Number(product.temp_min) || PRODUCT_FALLBACKS.temp_min,
-    temp_max: Number(product.temp_max) || PRODUCT_FALLBACKS.temp_max,
-    humidity_min: Number(product.humidity_min) || PRODUCT_FALLBACKS.humidity_min,
-    humidity_max: Number(product.humidity_max) || PRODUCT_FALLBACKS.humidity_max,
-    temperature_factor: Number(product.temperature_factor) || PRODUCT_FALLBACKS.temperature_factor,
-    humidity_factor: Number(product.humidity_factor) || PRODUCT_FALLBACKS.humidity_factor,
-    // Keep original for compatibility
+    product_name: product.product_name || product.name || "--",
+    expired_date: product.expired_date || product.expiry_date || "--",
+    temperature_range: product.temperature_range || "2-8",
+    humidity_range: product.humidity_range || "50-80",
+    // Keep original for reference
     ...product
   };
+}
+
+// VALIDATE RANGE FORMAT
+// Accepted format: "number-number" (e.g., "2-8", "-5-5", "50-80")
+function validateRangeFormat(rangeStr, fieldName) {
+  if (!rangeStr || typeof rangeStr !== "string") {
+    return `${fieldName} is required`;
+  }
+
+  const trimmed = rangeStr.trim();
+
+  // Check if format matches signed number-number
+  const rangeRegex = /^([+-]?\d+(?:\.\d+)?)-([+-]?\d+(?:\.\d+)?)$/;
+  const match = trimmed.match(rangeRegex);
+
+  if (!match) {
+    return `${fieldName} must be in format: number-number (e.g., "2-8")`;
+  }
+
+  const min = parseFloat(match[1]);
+  const max = parseFloat(match[2]);
+
+  if (min >= max) {
+    return `${fieldName}: first number must be less than second number`;
+  }
+
+  if (fieldName === "Humidity range" && (min < 0 || max < 0)) {
+    return `${fieldName} values must be positive`;
+  }
+
+  return null; // Valid
 }
 
 // Validation function
 function validateProduct(product) {
   const errors = [];
 
-  if (!product.name || product.name.trim() === "") {
+  if (!product.product_name || product.product_name.trim() === "") {
     errors.push("Product name is required");
   }
 
-  if (!product.expiry_date) {
+  if (!product.expired_date) {
     errors.push("Expiry date is required");
   }
 
-  const tempMin = Number(product.temp_min);
-  const tempMax = Number(product.temp_max);
-
-  if (isNaN(tempMin) || isNaN(tempMax)) {
-    errors.push("Temperature values must be numbers");
-  } else if (tempMin >= tempMax) {
-    errors.push("Min temperature must be less than max temperature");
+  const tempRangeError = validateRangeFormat(product.temperature_range, "Temperature range");
+  if (tempRangeError) {
+    errors.push(tempRangeError);
   }
 
-  const humidityMin = Number(product.humidity_min);
-  const humidityMax = Number(product.humidity_max);
-
-  if (isNaN(humidityMin) || isNaN(humidityMax)) {
-    errors.push("Humidity values must be numbers");
-  } else if (humidityMin >= humidityMax) {
-    errors.push("Min humidity must be less than max humidity");
-  }
-
-  const tempFactor = Number(product.temperature_factor);
-  const humidityFactor = Number(product.humidity_factor);
-
-  if (isNaN(tempFactor) || tempFactor < 0) {
-    errors.push("Temperature factor must be >= 0");
-  }
-
-  if (isNaN(humidityFactor) || humidityFactor < 0) {
-    errors.push("Humidity factor must be >= 0");
+  const humidityRangeError = validateRangeFormat(product.humidity_range, "Humidity range");
+  if (humidityRangeError) {
+    errors.push(humidityRangeError);
   }
 
   return errors;
@@ -110,7 +178,7 @@ function renderEmptyRow(message) {
 
   productList.innerHTML = `
     <tr>
-      <td class="empty-row" colspan="8">
+      <td class="empty-row" colspan="5">
         ${message}
       </td>
     </tr>
@@ -128,8 +196,8 @@ function renderProducts() {
       const normalized = normalizeProduct(product);
       const searchable =
         [
-          normalized.name,
-          normalized.expiry_date
+          normalized.product_name,
+          normalized.expired_date
         ]
           .join(" ")
           .toLowerCase();
@@ -158,20 +226,14 @@ function renderProducts() {
       return `
       <tr>
         <td>
-          <strong>${normalized.name}</strong>
+          <strong>${normalized.product_name}</strong>
         </td>
-        <td>${normalized.expiry_date}</td>
+        <td>${normalized.expired_date}</td>
         <td>
-          ${normalized.temp_min}°C - ${normalized.temp_max}°C
-        </td>
-        <td>
-          ${normalized.humidity_min}% - ${normalized.humidity_max}%
+          ${normalized.temperature_range}
         </td>
         <td>
-          <span class="factor-badge" title="Temperature Sensitivity">T: ${normalized.temperature_factor.toFixed(2)}</span>
-        </td>
-        <td>
-          <span class="factor-badge" title="Humidity Sensitivity">H: ${normalized.humidity_factor.toFixed(2)}</span>
+          ${normalized.humidity_range}
         </td>
         <td>
           <button
@@ -185,6 +247,8 @@ function renderProducts() {
     }).join("");
 }
 
+setupRangeInputs();
+
 if (addButton) {
   addButton.addEventListener("click", () => {
     try {
@@ -195,34 +259,30 @@ if (addButton) {
       const expiryDate =
         document.getElementById("expired-date").value;
 
-      const tempMin =
-        Number(document.getElementById("temp-min").value);
+      const temperatureMinValue =
+        document.getElementById("temperature-range-min")?.value;
 
-      const tempMax =
-        Number(document.getElementById("temp-max").value);
+      const temperatureMaxValue =
+        document.getElementById("temperature-range-max")?.value;
 
-      const humidityMin =
-        Number(document.getElementById("humidity-min").value);
+      const humidityMinValue =
+        document.getElementById("humidity-range-min")?.value;
 
-      const humidityMax =
-        Number(document.getElementById("humidity-max").value);
+      const humidityMaxValue =
+        document.getElementById("humidity-range-max")?.value;
 
-      const temperatureFactor =
-        Number(document.getElementById("temperature-factor").value);
+      const temperatureRange =
+        buildRangeString(temperatureMinValue, temperatureMaxValue);
 
-      const humidityFactor =
-        Number(document.getElementById("humidity-factor").value);
+      const humidityRange =
+        buildRangeString(humidityMinValue, humidityMaxValue);
 
       // Build product object
       const newProduct = {
-        name: productName,
-        expiry_date: expiryDate,
-        temp_min: tempMin,
-        temp_max: tempMax,
-        humidity_min: humidityMin,
-        humidity_max: humidityMax,
-        temperature_factor: temperatureFactor,
-        humidity_factor: humidityFactor
+        product_name: productName,
+        expired_date: expiryDate,
+        temperature_range: temperatureRange,
+        humidity_range: humidityRange
       };
 
       // Validate product
@@ -241,12 +301,10 @@ if (addButton) {
         // Clear form
         document.getElementById("product-name").value = "";
         document.getElementById("expired-date").value = "";
-        document.getElementById("temp-min").value = "";
-        document.getElementById("temp-max").value = "";
-        document.getElementById("humidity-min").value = "";
-        document.getElementById("humidity-max").value = "";
-        document.getElementById("temperature-factor").value = "";
-        document.getElementById("humidity-factor").value = "";
+        document.getElementById("temperature-range-min").value = "";
+        document.getElementById("temperature-range-max").value = "";
+        document.getElementById("humidity-range-min").value = "";
+        document.getElementById("humidity-range-max").value = "";
         
         console.log("[PRODUCTS] Product added successfully");
       }).catch((error) => {

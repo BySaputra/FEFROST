@@ -129,9 +129,9 @@ Sensors (DHT22, DS18B20)
     ↓ (Every 5 minute)
 [Data Validation & Processing]
     ↓
-[Adaptive FEFO Logic Engine]
-    ↓
 [Firebase Realtime Database]
+    ↓
+[Adaptive FEFO Logic Engine]
     ↓
 [Web Dashboard - Real-time Update]
     ↓

@@ -229,34 +229,60 @@ function calculateThresholdDeviation(value, min, max) {
   return 0;
 }
 
-function normalizeProductEnvironment(product) {
-  const tempMin =
-    toFiniteNumber(product.temp_min, DEFAULT_ENVIRONMENT.temp_min);
+// PARSE TEMPERATURE RANGE STRING
+// Input: "2-8" => Output: { min: 2, max: 8 }
 
-  const tempMax =
-    toFiniteNumber(product.temp_max, DEFAULT_ENVIRONMENT.temp_max);
+function parseTemperatureRange(range) {
+  if (!range || typeof range !== "string") {
+    return {
+      min: DEFAULT_ENVIRONMENT.temp_min,
+      max: DEFAULT_ENVIRONMENT.temp_max
+    };
+  }
 
-  const humidityMin =
-    toFiniteNumber(product.humidity_min, DEFAULT_ENVIRONMENT.humidity_min);
-
-  const humidityMax =
-    toFiniteNumber(product.humidity_max, DEFAULT_ENVIRONMENT.humidity_max);
+  const parts = range.split("-");
+  const min = toFiniteNumber(parts[0], DEFAULT_ENVIRONMENT.temp_min);
+  const max = toFiniteNumber(parts[1], DEFAULT_ENVIRONMENT.temp_max);
 
   return {
-    temp_min: Math.min(tempMin, tempMax),
-    temp_max: Math.max(tempMin, tempMax),
-    humidity_min: Math.min(humidityMin, humidityMax),
-    humidity_max: Math.max(humidityMin, humidityMax),
-    temperature_factor:
-      toFiniteNumber(
-        product.temperature_factor,
-        DEFAULT_ENVIRONMENT.temperature_factor
-      ),
-    humidity_factor:
-      toFiniteNumber(
-        product.humidity_factor,
-        DEFAULT_ENVIRONMENT.humidity_factor
-      )
+    min: Math.min(min, max),
+    max: Math.max(min, max)
+  };
+}
+
+// PARSE HUMIDITY RANGE STRING
+// Input: "50-80" => Output: { min: 50, max: 80 }
+
+function parseHumidityRange(range) {
+  if (!range || typeof range !== "string") {
+    return {
+      min: DEFAULT_ENVIRONMENT.humidity_min,
+      max: DEFAULT_ENVIRONMENT.humidity_max
+    };
+  }
+
+  const parts = range.split("-");
+  const min = toFiniteNumber(parts[0], DEFAULT_ENVIRONMENT.humidity_min);
+  const max = toFiniteNumber(parts[1], DEFAULT_ENVIRONMENT.humidity_max);
+
+  return {
+    min: Math.min(min, max),
+    max: Math.max(min, max)
+  };
+}
+
+function normalizeProductEnvironment(product) {
+  // Parse temperature_range and humidity_range from product
+  const tempRange = parseTemperatureRange(product.temperature_range);
+  const humidityRange = parseHumidityRange(product.humidity_range);
+
+  return {
+    temp_min: tempRange.min,
+    temp_max: tempRange.max,
+    humidity_min: humidityRange.min,
+    humidity_max: humidityRange.max,
+    temperature_factor: DEFAULT_ENVIRONMENT.temperature_factor,
+    humidity_factor: DEFAULT_ENVIRONMENT.humidity_factor
   };
 }
 

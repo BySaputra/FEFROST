@@ -19,28 +19,14 @@ import {
 }
 from "../utils/telemetry.js";
 
-// PRODUCT NORMALIZATION - Support new environmental schema with fallback
-const PRODUCT_FALLBACKS = {
-  temp_min: 2,
-  temp_max: 8,
-  humidity_min: 50,
-  humidity_max: 80,
-  temperature_factor: 0.2,
-  humidity_factor: 0.1
-};
-
+// PRODUCT NORMALIZATION - Simplified schema
 function normalizeProduct(product) {
   return {
-    // New schema fields
-    name: product.name || product.product_name || "--",
-    expiry_date: product.expiry_date || product.expired_date || "--",
-    temp_min: Number(product.temp_min) || PRODUCT_FALLBACKS.temp_min,
-    temp_max: Number(product.temp_max) || PRODUCT_FALLBACKS.temp_max,
-    humidity_min: Number(product.humidity_min) || PRODUCT_FALLBACKS.humidity_min,
-    humidity_max: Number(product.humidity_max) || PRODUCT_FALLBACKS.humidity_max,
-    temperature_factor: Number(product.temperature_factor) || PRODUCT_FALLBACKS.temperature_factor,
-    humidity_factor: Number(product.humidity_factor) || PRODUCT_FALLBACKS.humidity_factor,
-    // Keep original fields for backward compatibility
+    product_name: product.product_name || product.name || "--",
+    expired_date: product.expired_date || product.expiry_date || "--",
+    temperature_range: product.temperature_range || "2-8",
+    humidity_range: product.humidity_range || "50-80",
+    // Keep original fields for reference
     ...product
   };
 }

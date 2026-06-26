@@ -260,7 +260,8 @@
                 Product Name
                 <input type="text"
                   id="product-name"
-                  placeholder="Fresh Milk">
+                  placeholder="Fresh Milk"
+                  required>
               </label>
 
               <label>
@@ -271,64 +272,18 @@
               </label>
 
               <label>
-                Min Temperature (°C)
-                <input type="number"
-                  id="temp-min"
-                  placeholder="2"
-                  step="0.1"
+                Temperature Range
+                <input type="text"
+                  id="temperature-range"
+                  placeholder="2-8"
                   required>
               </label>
 
               <label>
-                Max Temperature (°C)
-                <input type="number"
-                  id="temp-max"
-                  placeholder="6"
-                  step="0.1"
-                  required>
-              </label>
-
-              <label>
-                Min Humidity (%)
-                <input type="number"
-                  id="humidity-min"
-                  placeholder="60"
-                  min="0"
-                  max="100"
-                  step="1"
-                  required>
-              </label>
-
-              <label>
-                Max Humidity (%)
-                <input type="number"
-                  id="humidity-max"
-                  placeholder="80"
-                  min="0"
-                  max="100"
-                  step="1"
-                  required>
-              </label>
-
-              <label>
-                Temperature Factor (0-1)
-                <input type="number"
-                  id="temperature-factor"
-                  placeholder="0.35"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  required>
-              </label>
-
-              <label>
-                Humidity Factor (0-1)
-                <input type="number"
-                  id="humidity-factor"
-                  placeholder="0.15"
-                  min="0"
-                  max="1"
-                  step="0.01"
+                Humidity Range
+                <input type="text"
+                  id="humidity-range"
+                  placeholder="50-80"
                   required>
               </label>
             </div>
@@ -355,8 +310,6 @@
                     <th>Expiry Date</th>
                     <th>Temperature Range</th>
                     <th>Humidity Range</th>
-                    <th>Temp Factor</th>
-                    <th>Humidity Factor</th>
                     <th>Action</th>
                   </tr>
                 </thead>
