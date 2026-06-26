@@ -26,14 +26,11 @@ const DEFAULT_ENVIRONMENT = {
   temp_min: 2,
   temp_max: 8,
   humidity_min: 50,
-  humidity_max: 80,
-  temperature_factor: 0.2,
-  humidity_factor: 0.1
+  humidity_max: 80
 };
 
 const TEMP_DANGER_DELTA = 2;
 const HUMIDITY_DANGER_DELTA = 10;
-const EXPIRED_BASE_SCORE = 1000;
 const INVALID_DATE_REMAINING_DAYS = 1;
 
 function isFiniteNumber(value) {
@@ -65,10 +62,11 @@ function buildRenderSignature(products) {
   return products
     .map((product) => {
       const name = product.product_name || product.name || "";
-      const baseScore = product.base_score;
-      const adaptiveScore = product.adaptive_score;
+      const priorityScore = product.priority_score;
       const status = product.status || "";
       const expired = product.expired_date || product.expiry_date || "";
+      const remainingDays = product.remaining_days;
+      const effectiveRemainingDays = product.effective_remaining_days;
       const deltaTemp = product.delta_temperature;
       const deltaHumidity = product.delta_humidity;
       const tempMin = product.temp_min;
@@ -78,7 +76,7 @@ function buildRenderSignature(products) {
       const currentTemp = product.current_temperature;
       const currentHumidity = product.current_humidity;
 
-      return `${name}|${baseScore}|${adaptiveScore}|${status}|${expired}|${deltaTemp}|${deltaHumidity}|${tempMin}|${tempMax}|${humidityMin}|${humidityMax}|${currentTemp}|${currentHumidity}`;
+      return `${name}|${priorityScore}|${status}|${expired}|${remainingDays}|${effectiveRemainingDays}|${deltaTemp}|${deltaHumidity}|${tempMin}|${tempMax}|${humidityMin}|${humidityMax}|${currentTemp}|${currentHumidity}`;
     })
     .join("::");
 }
@@ -280,22 +278,22 @@ function normalizeProductEnvironment(product) {
     temp_min: tempRange.min,
     temp_max: tempRange.max,
     humidity_min: humidityRange.min,
-    humidity_max: humidityRange.max,
-    temperature_factor: DEFAULT_ENVIRONMENT.temperature_factor,
-    humidity_factor: DEFAULT_ENVIRONMENT.humidity_factor
+    humidity_max: humidityRange.max
   };
 }
 
-function calculateBaseScore(remainingDays) {
+function calculatePenalty(deltaTemp, deltaHumidity) {
+  return deltaTemp + (deltaHumidity / 5);
+}
+
+function calculateEffectiveRemainingDays(remainingDays, deltaTemp, deltaHumidity) {
   if (!isFiniteNumber(remainingDays)) {
-    return 100 / INVALID_DATE_REMAINING_DAYS;
+    return INVALID_DATE_REMAINING_DAYS;
   }
 
-  if (remainingDays <= 0) {
-    return EXPIRED_BASE_SCORE + (Math.abs(remainingDays) * 100);
-  }
+  const penalty = calculatePenalty(deltaTemp, deltaHumidity);
 
-  return 100 / Math.max(remainingDays, INVALID_DATE_REMAINING_DAYS);
+  return Math.max(INVALID_DATE_REMAINING_DAYS, remainingDays - penalty);
 }
 
 // HITUNG STATUS
@@ -336,10 +334,11 @@ function calculateRiskScore(
     !isFiniteNumber(storageHumidity)
   ) {
     return {
-      base_score: 0,
-      adaptive_score: 0,
+      remaining_days: 0,
+      effective_remaining_days: INVALID_DATE_REMAINING_DAYS,
       delta_temperature: 0,
       delta_humidity: 0,
+      priority_score: 0,
       status: "SAFE"
     };
   }
@@ -365,25 +364,20 @@ function calculateRiskScore(
       environment.humidity_max
     );
 
-  // BASE FEFO URGENCY
-
   const remainingDays =
     getRemainingDays(
       getExpiredDate(product)
     );
 
-  const baseScore =
-    calculateBaseScore(remainingDays);
+  const effectiveRemainingDays =
+    calculateEffectiveRemainingDays(
+      remainingDays,
+      deltaTemp,
+      deltaHumidity
+    );
 
-  // ADAPTIVE ENVIRONMENTAL SCORE
-
-  const environmentalMultiplier =
-    1 +
-    (environment.temperature_factor * deltaTemp) +
-    (environment.humidity_factor * deltaHumidity);
-
-  const adaptiveScore =
-    baseScore * environmentalMultiplier;
+  const priorityScore =
+    100 / effectiveRemainingDays;
 
   const status =
     getStatus(
@@ -395,14 +389,14 @@ function calculateRiskScore(
     ...environment,
     remaining_days:
       remainingDays,
+    effective_remaining_days:
+      roundMetric(effectiveRemainingDays, 2),
     delta_temperature:
       roundMetric(deltaTemp),
     delta_humidity:
       roundMetric(deltaHumidity),
-    base_score:
-      roundMetric(baseScore),
-    adaptive_score:
-      roundMetric(adaptiveScore),
+    priority_score:
+      roundMetric(priorityScore, 2),
     status
   };
 }
@@ -492,7 +486,7 @@ function generateFEFO(force = false) {
         current_humidity:
           roundMetric(storageHumidity, 1),
         risk_score:
-          result.adaptive_score,
+          result.priority_score,
         original_index:
           originalIndex,
         status:
@@ -505,7 +499,7 @@ function generateFEFO(force = false) {
   analyzedProducts.sort(
     (a, b) => {
       const scoreDifference =
-        b.adaptive_score - a.adaptive_score;
+        b.priority_score - a.priority_score;
 
       if (scoreDifference !== 0) {
         return scoreDifference;
@@ -592,6 +586,12 @@ function renderFEFO(products) {
       const humidityMax =
         formatCompactNumber(product.humidity_max);
 
+      const remainingDays =
+        formatCompactNumber(product.remaining_days, 0);
+
+      const effectiveRemainingDays =
+        formatCompactNumber(product.effective_remaining_days, 2);
+
       const deltaTemperature =
         toFiniteNumber(product.delta_temperature, 0);
 
@@ -603,7 +603,7 @@ function renderFEFO(products) {
           ? `
             <div class="fefo-detail fefo-deviation">
               <span>
-                Temp deviation:
+                Temperature deviation:
               </span>
 
               <strong>
@@ -708,8 +708,38 @@ function renderFEFO(products) {
               </strong>
             </div>
 
+            <div class="fefo-detail">
+              <span>
+                Remaining Days:
+              </span>
+
+              <strong>
+                ${remainingDays}
+              </strong>
+            </div>
+
+            <div class="fefo-detail">
+              <span>
+                Effective Remaining Days:
+              </span>
+
+              <strong>
+                ${effectiveRemainingDays}
+              </strong>
+            </div>
+
             ${tempDeviationRow}
             ${humidityDeviationRow}
+
+            <div class="fefo-detail">
+              <span>
+                Status:
+              </span>
+
+              <strong>
+                ${product.status}
+              </strong>
+            </div>
           </div>
         </div>
       `;
