@@ -847,7 +847,7 @@ select:focus {
 
 .telemetry-table {
   width: 100%;
-  min-width: 720px;
+  min-width: 840px;
   border-collapse: collapse;
 }
 

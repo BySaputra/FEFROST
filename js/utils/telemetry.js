@@ -43,6 +43,10 @@ export function normalizeTelemetry(data) {
   const humidity = normalizeNumber(data.humidity);
   const storageHumidity = normalizeNumber(data.storage_humidity ?? data.humidity);
   const timestamp = normalizeNumber(data.timestamp) || Date.now();
+  const rtcTimestamp =
+    typeof data.rtc_timestamp === "string" && data.rtc_timestamp.trim()
+      ? data.rtc_timestamp.trim()
+      : null;
 
   // Determine status based on storage temperature
   let status = "SAFE";
@@ -58,6 +62,7 @@ export function normalizeTelemetry(data) {
     storage_humidity: storageHumidity,
     humidity,
     timestamp,
+    rtc_timestamp: rtcTimestamp,
     status
   };
 }

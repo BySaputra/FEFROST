@@ -136,10 +136,33 @@ function renderTelemetryLogs() {
 
   if (!logsList) return;
 
-  if (runtime.historyCache.length === 0) {
+  const recentLogs = runtime.historyCache.slice(0, MAX_HISTORY_RENDER);
+  const searchKeyword = runtime.currentFilter.search?.toLowerCase().trim();
+
+  const visibleLogs = searchKeyword
+    ? recentLogs.filter((data) => {
+        const rtcValue = (data.rtc_timestamp || "").toLowerCase();
+        const serverValue = formatTimestamp(data.timestamp).toLowerCase();
+        const statusValue = (data.status || "").toLowerCase();
+        const roomTempValue = String(data.room_temp).toLowerCase();
+        const humidityValue = String(data.humidity).toLowerCase();
+        const storageTempValue = String(data.storage_temp).toLowerCase();
+
+        return (
+          rtcValue.includes(searchKeyword) ||
+          serverValue.includes(searchKeyword) ||
+          statusValue.includes(searchKeyword) ||
+          roomTempValue.includes(searchKeyword) ||
+          humidityValue.includes(searchKeyword) ||
+          storageTempValue.includes(searchKeyword)
+        );
+      })
+    : recentLogs;
+
+  if (visibleLogs.length === 0) {
     logsList.innerHTML = `
       <tr>
-        <td class="empty-row" colspan="5">
+        <td class="empty-row" colspan="6">
           No telemetry data available.
         </td>
       </tr>
@@ -147,10 +170,10 @@ function renderTelemetryLogs() {
     return;
   }
 
-  logsList.innerHTML = runtime.historyCache
-    .slice(0, MAX_HISTORY_RENDER)
+  logsList.innerHTML = visibleLogs
     .map((data) => `
       <tr class="log-row telemetry">
+        <td>${data.rtc_timestamp && typeof data.rtc_timestamp === "string" && data.rtc_timestamp.trim() ? data.rtc_timestamp : "-"}</td>
         <td>
           <span class="timestamp">${formatTimestamp(data.timestamp)}</span>
         </td>

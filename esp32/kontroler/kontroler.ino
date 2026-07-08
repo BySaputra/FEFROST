@@ -2,7 +2,7 @@
 //  FEFROST LIGHTWEIGHT EDGE NODE  —  v4
 //  ESP32 Dev Module
 //  Sensors  : DHT22 (GPIO4) · DS18B20 (GPIO5)
-//  Output   : OLED SSD1306 I2C · Buzzer (GPIO18)
+//  Output   :  · Buzzer (GPIO18)
 //  Cloud    : Firebase RTDB (asia-southeast1)
 // =====================================================
 
@@ -17,6 +17,7 @@
 
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
+#include <RTClib.h>
 
 // =====================================================
 //  SECRETS  —  pindahkan ke secrets.h sebelum push ke repo
@@ -80,6 +81,28 @@ DHT               dht(DHTPIN, DHTTYPE);
 OneWire           oneWire(ONE_WIRE_BUS);
 DallasTemperature ds18b20(&oneWire);
 LiquidCrystal_I2C  lcd(LCD_ADDR, LCD_COLS, LCD_ROWS);
+RTC_DS3231 rtc;
+
+// =====================================================
+//  DEVICE TIME (RTC DS3231)
+// =====================================================
+
+bool rtcAvailable = false;
+bool rtcLostPowerFlag = false;
+
+int rtcYear = 0;
+int rtcMonth = 0;
+int rtcDay = 0;
+int rtcHour = 0;
+int rtcMinute = 0;
+int rtcSecond = 0;
+
+String currentDate = "";
+String currentTime = "";
+String currentDateTime = "";
+
+void initRTC();
+void updateRTC();
 
 // =====================================================
 //  FIREBASE OBJECTS
@@ -169,6 +192,8 @@ void setup() {
   lcd.init();
   lcd.backlight();
   showBootScreen();
+  // --- RTC ---
+  initRTC();
 
   // --- Sensors ---
   dht.begin();
@@ -200,6 +225,9 @@ void loop() {
 
   // --- WiFi watchdog ---
   reconnectWiFi();
+
+  // --- RTC update (refresh device time variables every loop) ---
+  updateRTC();
 
   // --- Firebase ready check ---
   if (!Firebase.ready()) return;
@@ -310,6 +338,13 @@ void readSensors() {
   Serial.printf("Room Temp    : %.1f °C\n", roomTemp);
   Serial.printf("Humidity     : %.1f %%\n", humidity);
   Serial.printf("Storage Temp : %.1f °C\n", storageTemp);
+  // Show device RTC time (if available)
+  if (rtcAvailable) {
+    Serial.print(F("RTC Time : "));
+    Serial.println(currentDateTime);
+  } else {
+    Serial.println(F("RTC Time : N/A"));
+  }
 }
 
 // ─────────────────────────────────────────────────────
@@ -350,6 +385,56 @@ void uploadData() {
     Serial.print(F("UPLOAD FAILED ✗ — "));
     Serial.println(fbdo.errorReason());
   }
+}
+
+//  RTC (DS3231) initialization and update
+// ─────────────────────────────────────────────────────
+
+void initRTC() {
+  // rtc uses same I2C bus as LCD (Wire already begun in setup)
+  if (!rtc.begin()) {
+    rtcAvailable = false;
+    Serial.println(F("RTC NOT FOUND on I2C"));
+    // show error on LCD and beep buzzer 3x but do NOT halt system
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("RTC ERROR");
+    for (uint8_t i = 0; i < 3; i++) {
+      tone(BUZZER_PIN, 1000, 200);
+      delay(400);
+    }
+    return;
+  }
+
+  rtcAvailable = true;
+  Serial.println(F("RTC DS3231 found"));
+
+  if (rtc.lostPower()) {
+    rtcLostPowerFlag = true;
+    Serial.println(F("RTC lost power — time may be invalid"));
+    // NOTE: place to implement time sync (e.g., NTP or Firebase time)
+    // future: perform automatic device_time synchronization here
+  } else {
+    rtcLostPowerFlag = false;
+  }
+}
+
+void updateRTC() {
+  if (!rtcAvailable) return;
+  DateTime now = rtc.now();
+  rtcYear = now.year();
+  rtcMonth = now.month();
+  rtcDay = now.day();
+  rtcHour = now.hour();
+  rtcMinute = now.minute();
+  rtcSecond = now.second();
+
+  char buf[32];
+  snprintf(buf, sizeof(buf), "%04d-%02d-%02d", rtcYear, rtcMonth, rtcDay);
+  currentDate = String(buf);
+  snprintf(buf, sizeof(buf), "%02d:%02d:%02d", rtcHour, rtcMinute, rtcSecond);
+  currentTime = String(buf);
+  currentDateTime = currentDate + " " + currentTime;
 }
 
 // ─────────────────────────────────────────────────────
@@ -411,8 +496,8 @@ void updateOLED() {
     lcd.setCursor(0, 0);
     lcd.print(line1);
 
-    String line2 = "HM:" + String((int)humidity) + "%";
-    line2 += (WiFi.status() == WL_CONNECTED) ? " W:OK" : " W:--";
+    String t = rtcAvailable && currentTime.length() >= 5 ? currentTime.substring(0,5) : "--:--";
+    String line2 = "HM:" + String((int)humidity) + "% T:" + t;
     if (line2.length() > LCD_COLS) line2 = line2.substring(0, LCD_COLS);
     lcd.setCursor(0, 1);
     lcd.print(line2);
