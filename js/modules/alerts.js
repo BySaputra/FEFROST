@@ -1,191 +1,177 @@
-/**
- * ALERTS MODULE
- * Manages alert events and notifications
- * 
- * Provides:
- * - Real-time alert listener
- * - Alert rendering and display
- * - Alert history management
- * - Alert severity classification
- */
-
-import {
-  ref,
-  onValue
-}
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-
-import {
-  database
-}
-from "../../config/firebase-config.js";
-
-import {
-  FIREBASE_PATHS
-}
-from "../utils/firebase-paths.js";
-
-import {
-  formatTimestamp
-}
-from "../utils/telemetry.js";
-
-// RUNTIME STATE
+import { getAdaptiveFefoProducts } from "./fefo.js";
 
 const runtime = {
-  initialized: false,
-  unsubscribe: null,
-  alertsCache: []
+  initialized: false
 };
 
-// DOM ELEMENTS
-
-function getAlertsList() {
-  return document.getElementById("alerts-list");
+function getAlertCenterList() {
+  return document.getElementById("alert-center-list");
 }
 
-function getAlertBadge() {
-  return document.getElementById("alert-count");
+function getAlertCenterCount() {
+  return document.getElementById("alert-center-count");
 }
 
-// UTILITY FUNCTIONS
-
-function getAlertSeverityClass(severity) {
-  const map = {
-    "critical": "danger",
-    "warning": "warning",
-    "info": "info",
-    "success": "safe"
-  };
-
-  return map[severity?.toLowerCase()] || "info";
+function getAlertCenterStatus() {
+  return document.getElementById("alert-center-status");
 }
 
-function getSeverityIcon(severity) {
-  const map = {
-    "critical": "⚠️",
-    "warning": "⚡",
-    "info": "ℹ️",
-    "success": "✓"
-  };
-
-  return map[severity?.toLowerCase()] || "●";
+function getStatusClass(status) {
+  if (status === "DANGER") return "danger";
+  if (status === "WARNING") return "warning";
+  return "safe";
 }
 
-// RENDER ALERTS
+function getStatusIcon(status) {
+  if (status === "DANGER") return "🔴";
+  if (status === "WARNING") return "🟡";
+  return "✅";
+}
 
-function renderAlerts() {
-  const alertsList = getAlertsList();
-  const alertBadge = getAlertBadge();
+function formatPriorityScore(score) {
+  const numericScore = Number(score);
 
-  if (!alertsList) return;
-
-  // Update alert badge count
-  if (alertBadge) {
-    const criticalCount = runtime.alertsCache.filter(
-      a => a.severity?.toLowerCase() === "critical"
-    ).length;
-
-    if (criticalCount > 0) {
-      alertBadge.textContent = String(criticalCount);
-      alertBadge.style.display = "block";
-    } else {
-      alertBadge.style.display = "none";
-    }
+  if (!Number.isFinite(numericScore)) {
+    return "0.00";
   }
 
-  if (runtime.alertsCache.length === 0) {
-    alertsList.innerHTML = `
-      <div class="alert-empty">
-        <p>No alerts</p>
-        <small>All systems operating normally</small>
+  return numericScore.toFixed(2);
+}
+
+function formatExpiredDate(dateValue) {
+  if (!dateValue) {
+    return "No expiry data";
+  }
+
+  const trimmed = String(dateValue).trim();
+
+  if (!trimmed) {
+    return "No expiry data";
+  }
+
+  const parsed = new Date(trimmed);
+
+  if (!Number.isFinite(parsed.getTime())) {
+    return trimmed;
+  }
+
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric"
+  }).format(parsed);
+}
+
+function getAlertItems() {
+  const products = getAdaptiveFefoProducts();
+
+  return products
+    .filter((product) => product.status === "WARNING" || product.status === "DANGER")
+    .sort((a, b) => {
+      const severityRank = {
+        DANGER: 0,
+        WARNING: 1
+      };
+
+      const severityDifference = severityRank[a.status] - severityRank[b.status];
+
+      if (severityDifference !== 0) {
+        return severityDifference;
+      }
+
+      const priorityDifference = Number(b.priority_score || 0) - Number(a.priority_score || 0);
+
+      if (priorityDifference !== 0) {
+        return priorityDifference;
+      }
+
+      const aDate = Date.parse(a.expired_date || "");
+      const bDate = Date.parse(b.expired_date || "");
+
+      if (Number.isFinite(aDate) && Number.isFinite(bDate) && aDate !== bDate) {
+        return aDate - bDate;
+      }
+
+      return (a.original_index || 0) - (b.original_index || 0);
+    })
+    .slice(0, 5);
+}
+
+function renderAlertCenter() {
+  const list = getAlertCenterList();
+  const countBadge = getAlertCenterCount();
+  const statusBadge = getAlertCenterStatus();
+
+  const alertItems = getAlertItems();
+  const hasAlerts = alertItems.length > 0;
+
+  if (countBadge) {
+    countBadge.textContent = String(alertItems.length);
+    countBadge.className = `status-pill ${hasAlerts ? "status-danger" : "status-safe"}`;
+  }
+
+  if (statusBadge) {
+    statusBadge.textContent = hasAlerts ? "ATTENTION" : "SAFE";
+    statusBadge.className = `status-pill ${hasAlerts ? "status-danger" : "status-safe"}`;
+  }
+
+  if (!list) {
+    return;
+  }
+
+  if (!hasAlerts) {
+    list.innerHTML = `
+      <div class="alert-center-empty">
+        <span class="alert-center-empty-icon">✅</span>
+        <div>
+          <strong>All Products Safe</strong>
+          <p>No products require immediate attention.</p>
+        </div>
       </div>
     `;
 
     return;
   }
 
-  alertsList.innerHTML = runtime.alertsCache
-    .slice(0, 50)
-    .map((alert) => `
-      <div class="alert-item alert-${getAlertSeverityClass(alert.severity)}">
-        <div class="alert-icon">
-          ${getSeverityIcon(alert.severity)}
+  list.innerHTML = alertItems.map((product) => `
+    <article class="alert-center-item alert-${getStatusClass(product.status)}">
+      <span class="alert-center-icon">${getStatusIcon(product.status)}</span>
+      <div class="alert-center-body">
+        <div class="alert-center-title-row">
+          <strong>${product.product_name || "--"}</strong>
+          <span class="alert-center-score">Priority Score : ${formatPriorityScore(product.priority_score)}</span>
         </div>
-        <div class="alert-content">
-          <strong>${alert.message || "Alert"}</strong>
-          <small>${formatTimestamp(alert.timestamp)}</small>
-        </div>
-        <div class="alert-severity">
-          <span class="badge ${getAlertSeverityClass(alert.severity)}">
-            ${alert.severity || "--"}
-          </span>
+        <div class="alert-center-meta">
+          <span>Status : ${product.status}</span>
+          <span>•</span>
+          <span>Expires : ${formatExpiredDate(product.expired_date)}</span>
         </div>
       </div>
-    `).join("");
+    </article>
+  `).join("");
 }
-
-// INITIALIZE ALERTS LISTENER
 
 export function initAlerts() {
-  if (runtime.initialized && runtime.unsubscribe) {
-    return runtime.unsubscribe;
+  if (runtime.initialized) {
+    return;
   }
 
-  try {
-    runtime.unsubscribe = onValue(
-      ref(database, FIREBASE_PATHS.alerts),
-      (snapshot) => {
-        runtime.alertsCache = [];
+  renderAlertCenter();
 
-        if (snapshot.exists()) {
-          snapshot.forEach((childSnapshot) => {
-            runtime.alertsCache.push({
-              key: childSnapshot.key,
-              ...childSnapshot.val()
-            });
-          });
-        }
+  window.addEventListener("liveDataUpdated", renderAlertCenter);
+  window.addEventListener("productsUpdated", renderAlertCenter);
 
-        // Sort by timestamp (newest first)
-        runtime.alertsCache.sort(
-          (a, b) => (b.timestamp || 0) - (a.timestamp || 0)
-        );
-
-        renderAlerts();
-
-        console.log("[ALERTS] Updated:", runtime.alertsCache.length, "alerts");
-      },
-      (error) => {
-        console.error("[ALERTS] Listener failed:", error);
-      }
-    );
-
-    runtime.initialized = true;
-
-    return runtime.unsubscribe;
-  } catch (error) {
-    console.error("[ALERTS] Initialization failed:", error);
-    return null;
-  }
+  runtime.initialized = true;
 }
-
-// STOP ALERTS LISTENER
 
 export function stopAlerts() {
-  runtime.unsubscribe?.();
-
-  runtime.unsubscribe = null;
   runtime.initialized = false;
 }
-
-// AUTO-INITIALIZE ON MODULE LOAD
 
 initAlerts();
 
 export default {
   initAlerts,
   stopAlerts,
-  getAlertsList,
-  getAlertBadge
+  renderAlertCenter
 };

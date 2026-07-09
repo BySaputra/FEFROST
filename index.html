@@ -116,40 +116,32 @@
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Alert Center</p>
-                <h2>Realtime Warning</h2>
+                <h2>Adaptive FEFO</h2>
               </div>
 
-              <p id="status"
+              <p id="alert-center-status"
                 class="status-pill status-safe">
-                --
+                SAFE
               </p>
             </div>
 
-            <div id="alert-box"
-              class="alert alert-safe"
+            <div id="alert-center-list"
+              class="alert-center-list"
               role="status"
               aria-live="polite">
-              <div class="alert-content">
-                <span id="alert-status"
-                  class="alert-status">
-                  SAFE
-                </span>
-
-                <span id="alert-message">
-                  System is operating normally. Storage temperature is within safe range.
-                </span>
+              <div class="alert-center-empty">
+                <span class="alert-center-empty-icon">✅</span>
+                <div>
+                  <strong>All Products Safe</strong>
+                  <p>No products require immediate attention.</p>
+                </div>
               </div>
-
-              <span id="alert-time"
-                class="alert-time">
-                --
-              </span>
             </div>
 
             <div class="threshold-row">
-              <span>SAFE <= 5&deg;C</span>
-              <span>WARNING 5-8&deg;C</span>
-              <span>DANGER > 8&deg;C</span>
+              <span>Top 5 products</span>
+              <span>Sorted by urgency</span>
+              <span>Realtime updates</span>
             </div>
           </section>
 

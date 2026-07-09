@@ -405,6 +405,74 @@ function calculateRiskScore(
 // FEFO ENGINE
 // ===============================
 
+function buildAnalyzedProducts(products, storageTemp, storageHumidity) {
+  return products.map((product, originalIndex) => {
+    const result =
+      calculateRiskScore(
+        product,
+        storageTemp,
+        storageHumidity
+      );
+
+    return {
+      ...product,
+      ...result,
+      product_name: getProductName(product),
+      expired_date: getExpiredDate(product),
+      current_temperature: roundMetric(storageTemp, 1),
+      current_humidity: roundMetric(storageHumidity, 1),
+      risk_score: result.priority_score,
+      original_index: originalIndex,
+      status: result.status
+    };
+  });
+}
+
+export function getAdaptiveFefoProducts() {
+  const liveData = store.liveData;
+  const products = store.productsData;
+
+  if (!liveData || !Array.isArray(products) || products.length === 0) {
+    return [];
+  }
+
+  const storageTemp = Number(liveData.storage_temp);
+  const storageHumidity = Number(liveData.storage_humidity ?? liveData.humidity);
+
+  if (!isFiniteNumber(storageTemp) || !isFiniteNumber(storageHumidity)) {
+    return [];
+  }
+
+  const analyzedProducts = buildAnalyzedProducts(products, storageTemp, storageHumidity);
+
+  analyzedProducts.sort((a, b) => {
+    const scoreDifference = b.priority_score - a.priority_score;
+
+    if (scoreDifference !== 0) {
+      return scoreDifference;
+    }
+
+    const aDate = getSortableDate(a);
+    const bDate = getSortableDate(b);
+
+    if (aDate !== null && bDate !== null && aDate !== bDate) {
+      return aDate - bDate;
+    }
+
+    if (aDate !== null && bDate === null) {
+      return -1;
+    }
+
+    if (aDate === null && bDate !== null) {
+      return 1;
+    }
+
+    return a.original_index - b.original_index;
+  });
+
+  return analyzedProducts;
+}
+
 function generateFEFO(force = false) {
   // STORE DATA
 
@@ -466,33 +534,11 @@ function generateFEFO(force = false) {
   // PROCESS PRODUCTS
 
   const analyzedProducts =
-    products.map((product, originalIndex) => {
-      const result =
-        calculateRiskScore(
-          product,
-          storageTemp,
-          storageHumidity
-        );
-
-      return {
-        ...product,
-        ...result,
-        product_name:
-          getProductName(product),
-        expired_date:
-          getExpiredDate(product),
-        current_temperature:
-          roundMetric(storageTemp, 1),
-        current_humidity:
-          roundMetric(storageHumidity, 1),
-        risk_score:
-          result.priority_score,
-        original_index:
-          originalIndex,
-        status:
-          result.status
-      };
-    });
+    buildAnalyzedProducts(
+      products,
+      storageTemp,
+      storageHumidity
+    );
 
   // SORT DESCENDING
 
