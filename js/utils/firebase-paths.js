@@ -21,6 +21,9 @@ export const FIREBASE_PATHS = {
   // Product inventory
   products: "fefrost/products",
 
+  // FEFO product status summary
+  productSummary: "fefrost/product_summary",
+
   // Alert events
   alerts: "fefrost/alerts",
 

@@ -1,6 +1,22 @@
 // js/modules/fefo.js
 
+import {
+  ref,
+  set
+}
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
 import { store } from "../core/store.js";
+
+import {
+  database
+}
+from "../../config/firebase-config.js";
+
+import {
+  FIREBASE_PATHS
+}
+from "../utils/firebase-paths.js";
 
 // ===============================
 // ELEMENT
@@ -13,6 +29,7 @@ let lastStorageTemp = null;
 let lastStorageHumidity = null;
 let debounceTimer = null;
 let lastRenderSignature = "";
+let lastSummarySyncSignature = null;
 
 const TEMP_THRESHOLD = 0.5;
 const HUMIDITY_THRESHOLD = 1;
@@ -79,6 +96,65 @@ function buildRenderSignature(products) {
       return `${name}|${priorityScore}|${status}|${expired}|${remainingDays}|${effectiveRemainingDays}|${deltaTemp}|${deltaHumidity}|${tempMin}|${tempMax}|${humidityMin}|${humidityMax}|${currentTemp}|${currentHumidity}`;
     })
     .join("::");
+}
+
+function buildProductSummary(products) {
+  const summary = {
+    total_products: 0,
+    safe_products: 0,
+    warning_products: 0,
+    danger_products: 0,
+    last_update: Date.now()
+  };
+
+  if (!Array.isArray(products)) {
+    return summary;
+  }
+
+  summary.total_products = products.length;
+
+  products.forEach((product) => {
+    const status =
+      String(product.status || "").toUpperCase();
+
+    if (status === "SAFE") {
+      summary.safe_products += 1;
+    } else if (status === "WARNING") {
+      summary.warning_products += 1;
+    } else if (status === "DANGER") {
+      summary.danger_products += 1;
+    }
+  });
+
+  return summary;
+}
+
+function syncProductSummary(products, signature = buildRenderSignature(products)) {
+  if (signature === lastSummarySyncSignature) {
+    return;
+  }
+
+  lastSummarySyncSignature = signature;
+
+  const summary =
+    buildProductSummary(products);
+
+  set(
+    ref(database, FIREBASE_PATHS.productSummary),
+    summary
+  ).then(() => {
+    console.log(
+      "[FEFO] Product summary synced:",
+      summary
+    );
+  }).catch((error) => {
+    lastSummarySyncSignature = null;
+
+    console.error(
+      "[FEFO] Failed to sync product summary:",
+      error
+    );
+  });
 }
 
 function shouldRecalculate(currentTemp, currentHumidity) {
@@ -498,6 +574,7 @@ function generateFEFO(force = false) {
     `;
 
     lastRenderSignature = "";
+    syncProductSummary([]);
     return;
   }
 
@@ -571,6 +648,10 @@ function generateFEFO(force = false) {
 
       return a.original_index - b.original_index;
     }
+  );
+
+  syncProductSummary(
+    analyzedProducts
   );
 
   // RENDER
